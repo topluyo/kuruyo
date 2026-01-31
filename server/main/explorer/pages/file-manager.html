@@ -1,0 +1,78 @@
+<base href="/pages/" target="_blank">
+
+<meta charset="utf8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="<?= addslashes($_GET['base']) ?>/?page=FileManager.js"></script>
+<script src="<?= addslashes($_GET['base']) ?>/?page=Icons.js"></script>
+<script src="<?= addslashes($_GET['base']) ?>/?page=ProgressBar.js"></script>
+<script src="<?= addslashes($_GET['base']) ?>/?page=GoEditor.js"></script>
+
+<title>/</title>
+
+<link rel="stylesheet" href="<?= addslashes($_GET['base']) ?>/?page=ModalView.css">
+<link rel="stylesheet" href="<?= addslashes($_GET['base']) ?>/?page=ProgressBar.css">
+
+
+<link type="image/x-icon" rel="shortcut icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMWVtIiBoZWlnaHQ9IjFlbSIgdmlld0JveD0iMCAwIDI0IDI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KICA8cGF0aCBmaWxsPSIjZjE5ZDM3IiBkPSJNMTEgNWMtMS42MjkgMC0yLjMwNS0xLjA1OC00LTNoLTd2MjBoMjR2LTE3aC0xM3oiPjwvcGF0aD4NCjwvc3ZnPg==">
+
+<script>
+path = "<?=  addslashes($_GET['path']) ?>";
+base = "<?=  addslashes($_GET['base']) ?>";
+
+document.addEventListener("DOMContentLoaded",function(){
+  FileManager.options.server = base ;
+
+
+  fileManager = FileManager.Select({
+    type : "explore",
+    path : path,
+    closeButton : false,
+    //theme: "dark",
+    title: "<?= addslashes($_GET['base']) ?>",
+    hideThumbnailFolder: false
+  })
+
+
+  fileManager.on("dir",path=>{   
+    let link  = "<?= addslashes($_GET['base']) ?>/root" + path;
+    link = link.split("//").join("/")
+    let title = path
+    history.pushState({ path: path }, title, link );
+    document.querySelector("title").innerHTML = path
+
+    let text = path.split("/").pop().substr(0,2)
+    let color = localStorage["file-manager-color"+fileManager.path]
+    if(!color || color=="null") color="#e5a14d"
+    
+    let inverse = "black";
+    if( ["rgb(55, 124, 245)","rgb(103, 58, 183)","rgb(255, 78, 235)","rgb(244, 67, 54)"].indexOf(color) > -1 ){
+      inverse = "white"
+    }
+
+    let file_svg = `<svg style="width:1em;height:1em;" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="white" d="M22 24h-20v-24h14l6 6v18zm-7-23z" style=""></path></svg>`
+
+    let svg = `<svg width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="${color}" d="M11 5c-1.629 0-2.305-1.058-4-3h-7v20h24v-17h-13z"></path><text x="12" y="18" class="heavy" fill="${inverse}" text-anchor="middle"  style="font: bold 16px monospace;">${text}</text></svg>`
+    document.querySelector('[rel="shortcut icon"]').href = "data:image/svg+xml;base64," + window.btoa(svg);
+  
+  })
+
+
+  
+  fileManager.on("file",data=>{   
+    let path = data.path,color = data.color;
+    document.querySelector("title").innerHTML = path
+    let text = path.split("/").pop().substr(0,2)
+    
+    //color = "#DDD"
+    //inverse = "black"
+    inverse = "white"
+
+    let svg = `<svg style="width:1em;height:1em;" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="${color}" d="M22 24h-20v-24h14l6 6v18zm-7-23z" style=""></path><text x="12" y="20" class="heavy" fill="${inverse}" text-anchor="middle"  style="font: bold 16px monospace;">${text}</text></svg>`
+    document.querySelector('[rel="shortcut icon"]').href = "data:image/svg+xml;base64," + window.btoa(svg);
+  
+    setTimeout(e=>InitGoEditor(),100)
+  })
+  
+})
+
+</script>

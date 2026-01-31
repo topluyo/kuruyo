@@ -1,0 +1,198 @@
+<script src="//hasandelibas.github.io/documenter/documenter.js"></script>
+<meta charset="utf8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<header body-class="show-menu theme-dark tab-system">
+  <div title="">
+    🐺
+    CloudBozkurt
+  </div>
+  <div class="space"></div>
+  <a onclick="document.cookie = 'PHPSESSID=; Max-Age=0';window.close()" icon-button="" style="color:#F44" title="Oturumu Kapat"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-84 31.5-156.5T197-763l56 56q-44 44-68.5 102T160-480q0 134 93 227t227 93q134 0 227-93t93-227q0-67-24.5-125T707-707l56-56q54 54 85.5 126.5T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm-40-360v-440h80v440h-80Z"/></svg></a>
+  <script> documenter.on("ready",()=>document.body.setAttribute("spellcheck","false") ) </script>
+</header>
+
+
+<style>
+  html{
+    position:relative;
+  }
+  html:before{
+    content:"";
+    position:absolute;
+    left:0;right:0;
+    bottom:0;top:0;
+    width:100%;
+    height:100%;
+    z-index:-1;
+    background: url(https://source.unsplash.com/random/1200x800/?space);
+    background-size: cover;
+    opacity:.7;
+  }
+</style>
+# 🐺 CloudBozkurt
+<?php $base = $_SERVER["SCRIPT_URI"]; ?>
+
+<a button target="_blank" href="folder/">📁 Folders</a>
+<a button target="_blank" href="terminal.php">⌨️ Terminal</a>
+<a button target="_blank" href="database.php">🗄️ DataBase</a>
+<a button target="_blank" href="adminer.php">🗄️ Adminer</a>
+<a button target="_blank" href="/phpMyAdmin/index.php">🗄️ phpMyAdmin</a>
+<a button target="_blank" href="services.php">⚙️ Services</a>
+
+
+
+# nginx 
+
+<a button target="_blank" href="/terminal.php?code=bash deploy.sh /var/web"> nginx check /var/web </a>
+<a button target="_blank" href="/terminal.php?code=service nginx reload;echo nginx reloaded"> nginx reload </a>
+<a button target="_blank" href="/terminal.php?code=chown -R www-data:www-data /var/web;">fix /var/www</a>
+
+# cron jobs
+
+## list
+<a button target="_blank" href="/terminal.php?code=crontab -l"> crontab -r [listele] </a>
+
+
+## delete all
+<a button style="background:red;" target="_blank" href="/terminal.php?code=crontab -r"> crontab -r [Hepsini sil] </a>
+
+
+## new 
+```
+* * * * * command_to_run
+│ │ │ │ │
+│ │ │ │ └─ Day of the week (0-7) (Sunday = 0 or 7)
+│ │ │ └──── Month (1 - 12)
+│ │ └─────── Day of the month (1 - 31)
+│ └───────── Hour (0 - 23)
+└─────────── Minute (0 - 59)
+```
+
+```
+* — Expands to all values for the field
+, — List separator
+- — Range separator
+/ — Step values (e.g., */5 for every 5 units)
+```
+
+
+
+<label for="cron-select">Select Schedule:</label><br>
+<select id="cron-select" onchange="updateCronLine()" style="width: 100%;">
+  <option value="* * * * *">Every minute</option>
+  <option value="*/5 * * * *">Every 5 minutes</option>
+  <option value="0 * * * *">Every hour</option>
+  <option value="0 */2 * * *">Every 2 hours</option>
+  <option value="0 0 * * *">Every day (midnight)</option>
+  <option value="0 6 * * *">Every day at 6 AM</option>
+  <option value="0 12 * * *">Every day at 12 PM (noon)</option>
+  <option value="0 18 * * *">Every day at 6 PM</option>
+  <option value="0 0 * * 0">Every Sunday</option>
+  <option value="0 0 * * 1-5">Every weekday (Mon–Fri)</option>
+  <option value="0 0 1 * *">First day of the month</option>
+  <option value="0 0 15 * *">15th of every month</option>
+  <option value="0 0 1 1 *">January 1st (once a year)</option>
+</select>
+
+<br><br>
+
+<label for="cron-command">Cron Job Command:</label><br>
+<input type="text" id="cron-command" value="/path/to/your/script.sh" style="width: 100%;" oninput="updateCronLine()">
+
+<br><br>
+
+<form id="cron-form" onsubmit="submitCron(event)">
+  <label for="create-cron-job-textarea">Cron Job Script:</label><br>
+  <textarea id="create-cron-job-textarea" name="create-cron-job-textarea" rows="10" cols="60" style="width: 100%; height: 160px;">
+crontab -l > new_cron
+echo "* * * * * /path/to/your/script.sh" >> new_cron
+crontab new_cron
+rm new_cron
+  </textarea><br><br>
+
+  <button type="submit">Create Cron Job</button>
+</form>
+
+<script>
+function updateCronLine() {
+  const schedule = document.getElementById('cron-select').value;
+  const command = document.getElementById('cron-command').value.trim();
+  const filename = "new_cron";
+  const textarea = document.getElementById('create-cron-job-textarea');
+  const lines = textarea.value.trim().split('\n');
+
+  const newLines = lines.map(line => {
+    if (line.trim().startsWith('crontab -l >')) {
+      return `crontab -l > ${filename}`;
+    }
+    if (line.trim().startsWith('echo "')) {
+      return `echo "${schedule} ${command}" >> ${filename}`;
+    }
+    if (line.trim().startsWith('crontab ')) {
+      return `crontab ${filename}`;
+    }
+    if (line.trim().startsWith('rm ')) {
+      return `rm ${filename}`;
+    }
+    return line;
+  });
+
+  textarea.value = newLines.join('\n');
+}
+
+function submitCron(event) {
+  event.preventDefault();
+  let script = document.getElementById('create-cron-job-textarea').value;
+  // Add semicolon at end of each line if missing, join with spaces
+  script = script
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .map(line => line.endsWith(';') ? line : line + ';')
+    .join(' ');
+  const encoded = encodeURIComponent(script);
+  const url = `/terminal.php?code=${encoded}`;
+  window.open(url, '_blank');
+}
+
+// Initialize textarea on page load
+updateCronLine();
+</script>
+
+
+
+# firewall-test
+
+<x-script style="display:none">
+
+
+  const targetUrl = 'http://test.topluyo.com/';
+  const requestsPerSecond = 5;
+  const totalRequests = 50;
+
+  let sentRequests = 0;
+
+  const interval = setInterval(() => {
+    if (sentRequests >= totalRequests) {
+      clearInterval(interval);
+      console.log('Finished sending test requests.');
+      return;
+    }
+
+    fetch(targetUrl)
+      .then(response => {
+        console.log(`Status: ${response.status}`);
+        return response.text();
+      })
+      .then(body => {
+        console.log(`Response: ${body}`);
+      })
+      .catch(error => {
+        console.error(`Error: ${error}`);
+      });
+
+    sentRequests++;
+  }, 1000 / requestsPerSecond);
+
+</x-script>

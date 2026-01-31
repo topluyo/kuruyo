@@ -1,0 +1,1 @@
+ss -tn state established '( sport != :ssh )'

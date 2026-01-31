@@ -1,0 +1,1 @@
+/program/go run main.go log=/web/.log/topluyo.log r=20 s=10 b=600

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link type="image/x-icon" rel="shortcut icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABTklEQVR4AeyawQ3CMAxFC0cYB9aAdWAEWAfWgHHgCu7NjfLlcEmL/0exRBxZqb+fG1qxHsg/EoAcgEEEiAByBdQC5ADoJqgWUAuQK6AWIAeg6RTYmUgvsw+wg/lrI4o71YJ6++haoBRYApSKsM1FAFvFy3w9Aeiu/bCgjRkaN1uonRBR3AXEdT0dvAB2PXxDAvDVfJqxCJjqwTfzBDwt/a3ZqrC9zd9maBxtoYwZ51HcGcRdzd9teAG6bbqkjSTAkqoxx7WIgDlU77lntJcIiBTKvu4J0NNg9mrX8vME1NbT+yRA+hIHCYoAJ5CeBp0YNF/VAjSlBomKACAMjVsEZCv1r/m0EIB+H4xvfke7g02juK5vf8E1Nv1FBsWm8LcQkCJRlIQEQMqw+EUAS6VRniIAKcPiFwEslUZ5igCkDItfBLBUGuX59wSgxFr9XwAAAP//vIyVjAAAAAZJREFUAwCC30CBHSGbYAAAAABJRU5ErkJggg==">
+  <title>ⵌ Terminal</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css" />
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: black;
+    }
+    #terminal {
+      height: 100vh;
+      width: 100vw;
+    }
+  </style>
+</head>
+<body>
+  <div id="terminal"></div>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit/lib/xterm-addon-fit.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
+  <script>
+    const term = new Terminal();
+    term.open(document.getElementById('terminal'));
+
+    term.write("|-  TERMINAL   -|\n\r")
+    term.write("|  ?run=whoami  |\n\r")
+
+
+    let start = new URLSearchParams(window.location.search).get('run');
+    function init(){
+
+      socket = new WebSocket(`wss://${location.host}/ws`);
+      socket.binaryType = "arraybuffer";
+      socket.onopen = () => {
+        term.write("┌────────────────────────────────────────────────┐\r\n")
+        term.write('│           Conncected to terminal.              │\r\n');
+        term.write("└────────────────────────────────────────────────┘\r\n");
+        if(start) socket.send( start + "\n" )
+        start = "";
+      };
+
+      socket.onmessage = (event) => {
+        const data = new Uint8Array(event.data);
+        term.write(new TextDecoder("utf-8", { fatal: false }).decode(data));
+      };
+      
+      socket.onclose = () => {
+        term.write("┌────────────────────────────────────────────────┐\r\n")
+        term.write('│ !!!   Disconnected from terminal. Retry    !!! │\r\n');
+        term.write("└────────────────────────────────────────────────┘\r\n");
+        setTimeout(init,2000);
+      };
+    }
+    init();
+
+
+    term.onData(data => {
+      socket.send(data);
+    });
+
+
+    const fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    fitAddon.fit();
+
+    window.addEventListener('resize', () => {
+      fitAddon.fit();
+    });
+
+    window.addEventListener("keydown", async (e) => {
+      // Detect Ctrl + Shift + C
+      if (e.ctrlKey && e.shiftKey && e.code === "KeyC") {
+        e.preventDefault();
+
+        const selected = term.getSelection();
+        if (selected) {
+          try {
+            await navigator.clipboard.writeText(selected);
+            console.log("Copied:", selected);
+          } catch (err) {
+            console.error("Clipboard error:", err);
+          }
+        }
+      }
+    });
+
+
+
+
+  </script>
+
+
+
+<style>
+
+  /* Modal Arkaplanı */
+  #cookieModal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7);
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  }
+
+  /* Modal Kutusu */
+  #cookieBox {
+    background: #1c1c1c;
+    padding: 25px;
+    border-radius: 8px;
+    width: 320px;
+    box-shadow: 0 0 10px #000;
+    text-align: center;
+  }
+
+  input {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border: 1px solid #333;
+    background: #222;
+    color: #fff;
+    border-radius: 5px;
+    text-align: center;
+    font-family: monospace;
+    box-sizing: border-box;
+  }
+
+  button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    background: #333;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-family: monospace;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #444;
+  }
+
+</style>
+
+<!-- Modal -->
+<div id="cookieModal">
+  <div id="cookieBox">
+    <input type="password" id="cookieName" placeholder="CODE">
+    <input type="password" id="cookieValue" placeholder="PASS">
+    <button id="loginBtn">START</button>
+  </div>
+</div>
+
+<script>
+  // Cookie Setleme Fonksiyonu
+  function setCookie(name, value, days) {
+    let expires = "";
+    if (days) {
+      const date = new Date();
+      date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+      expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}${expires}; path=/`;
+  }
+
+  // Modal Açma (Shift + Sağ Click)
+  document.addEventListener("contextmenu", function(e) {
+    if (e.shiftKey) {
+      e.preventDefault(); // Normal sağ tık engellenmez, sadece shift ile engellenir
+      document.getElementById("cookieModal").style.display = "flex";
+    }
+  });
+
+  // Cookie Kaydetme
+  document.getElementById("loginBtn").addEventListener("click", () => {
+    const name  = document.getElementById("cookieName").value.trim();
+    const value = document.getElementById("cookieValue").value.trim();
+
+    if (!name) {
+      alert("Lütfen cookie ismi girin.");
+      return;
+    }
+
+    setCookie(name, value, 365);
+    window.location.reload();
+  });
+
+  // Modal dışına tıklayınca kapansın
+  document.getElementById("cookieModal").addEventListener("click", (e) => {
+    if (e.target.id === "cookieModal") {
+      document.getElementById("cookieModal").style.display = "none";
+    }
+  });
+</script>
+
+</body>
+</html>
