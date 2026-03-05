@@ -55,7 +55,10 @@ var (
 /* ---------------- MAIN ---------------- */
 
 func main() {
-	if( argument("log") == "" && argument("clear")=="" ){
+
+
+
+	if( argument("log") == "" && argument("clear")==""  && argument("unban")==""){
 		row("USAGE")
 		write(" log=/path/to/file.log")
 		write(" cf=/web/config/.cloudflare.log")
@@ -82,6 +85,11 @@ func main() {
 
 	if(argument("clear")!=""){
 		ClearAllBlockedIPs(cfConfig.CFZoneID,cfConfig.CFAuthToken)
+	}
+
+	if(argument("unban")!=""){
+		UnBlockOnCloudFlare(argument("unban"),cfConfig.CFZoneID,cfConfig.CFAuthToken)
+		return
 	}
 
 	if(argument("log")!=""){

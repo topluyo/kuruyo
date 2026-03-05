@@ -177,7 +177,7 @@ download_dir() {
 download_dir "$1"
 BASH;
 
-file_put_contents(".curl.sh", $curlScript);
+//file_put_contents(".curl.sh", $curlScript);
 
 if($action==="start"){
     $auth = trim( getBearerToken() );

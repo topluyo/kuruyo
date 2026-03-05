@@ -65,6 +65,8 @@ type Route struct{
 
 	proxy          *httputil.ReverseProxy
 
+	Balancer       int
+
 	Limits         []*Limit
 	UseLimit       bool
 	UseToken       bool
@@ -175,8 +177,22 @@ func (r *Route) HealthChecker() {
 	}
 }
 
+
+func BalancerHash(url string, r int) int {
+	if r <= 0 {
+		return 0
+	}
+
+	var hash uint32
+	for i := 0; i < len(url); i++ {
+		hash = hash*31 + uint32(url[i])
+	}
+
+	return int(hash % uint32(r))
+}
+
 //@ Select Back End its upped
-func (r *Route) RunningBackEnd() *url.URL {
+func (r *Route) RunningBackEnd(url string) *url.URL {
 	n := len(r.Backends)
 	if n == 0 {
 		return nil
@@ -188,6 +204,12 @@ func (r *Route) RunningBackEnd() *url.URL {
 		}
 		return r.Backends[0]
 	}
+
+	write("Balancer is",r.Balancer)
+	if(r.Balancer>1){
+		return r.Backends[BalancerHash(url,r.Balancer)]
+	}
+
 	start := atomic.AddUint64(&r.rrCounter, 1)
 	for i := 0; i < n; i++ {
 		idx := int((start + uint64(i)) % uint64(n))
@@ -328,6 +350,18 @@ func fast(){
 		domain := UrlDomain(host)
 		path   := UrlPath(host)
 
+		Balancer := 0
+		
+		path_balancer := strings.Split(path, "%%")
+		if(len(path_balancer)>1){
+			path = path_balancer[0]
+			Balancer = 1
+		}
+
+		
+
+
+
 		_, ok := server.Domains[domain]
 		if(!ok){
 			server.Domains[domain] = make(map[string]*Route)
@@ -346,6 +380,13 @@ func fast(){
 			}
 		}
 
+		if(Balancer==1){
+			Balancer = len(server.Routes[host].Proxies)
+			server.Routes[host].Balancer = Balancer
+			write("\n├─── Balancer")
+			write("  path     :" , path)
+			write("  Balancer :" , Balancer)
+		}
 
 		write("├─── Proxies");
 
@@ -364,7 +405,7 @@ func fast(){
 
 		server.Routes[host].proxy = &httputil.ReverseProxy{
 			Director: func(req *http.Request) {
-				backend := server.Routes[host].RunningBackEnd()
+				backend := server.Routes[host].RunningBackEnd(req.URL.String())
 				if backend == nil {
 					return
 				}
@@ -526,7 +567,10 @@ func run(){
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		host := HostDomain(r.Host)
 		path := UrlPath(r.URL.String())
+		
+
 		ip := fastRealIP(r)
+
 		
     if _, ok := server.Blocked[ip]; ok {
 			http.Error(w, "bloked", http.StatusBadGateway)

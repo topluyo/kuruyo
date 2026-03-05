@@ -318,7 +318,7 @@ func main() {
 
 	write(r)
 
-	Test("https://topluyo.com/RATE/TEST", 5000)
+	Test("https://topluyo.com/", 5000)
 }
 
 

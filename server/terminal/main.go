@@ -99,7 +99,7 @@ func access(r *http.Request) bool {
 	if err != nil {
 		return true
 	}
-	return cookie.Value != "XXXXXXXXXXXXXXXXXXXXXXXXXX"
+	return cookie.Value != "18247829059349869010294823857835893475878123781"
 }
 
 func main() {

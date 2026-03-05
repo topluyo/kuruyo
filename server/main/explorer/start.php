@@ -8,7 +8,7 @@ FileManager::DefineOptions([
   "CREATE_THUMBNAIL" => false,
   "THUMBNAIL_WIDTH" => [60],
   "SHOW_FOLDER_SIZE" => false,
-  "SECURITY_ENABLED" => true,
+  "SECURITY_ENABLED" => false,
   "SECURITY_USERS" => [ "XXXXXXXXXXXXXXXXX" => "XXXXXXXXXXXXXXXXXX" ],
   "LOGIN_HASH" => "XXXXXXXXXXXXXXX",
 ]);

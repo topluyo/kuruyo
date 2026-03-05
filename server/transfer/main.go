@@ -1,107 +1,102 @@
 package main
 
 import (
-	"io"
 	"log"
-	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
-	"unicode"
-	"strconv"
+  "strings"
+  "unicode"
+  "strconv"
+	"github.com/gorilla/websocket"
 )
 
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
 
 
-// ---------- MAIN ----------
+func uploadHandler(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("WebSocket upgrade error:", err)
+		return
+	}
+	defer conn.Close()
+
+	uploadDir := "/web/uploads"
+	// Klasör yoksa oluştur
+	err = os.MkdirAll(uploadDir, os.ModePerm)
+	if err != nil {
+		log.Println("Failed to create upload directory:", err)
+		conn.WriteMessage(websocket.TextMessage, []byte("Server error: cannot create upload directory"))
+		return
+	}
+
+	var file *os.File
+	for {
+		messageType, msg, err := conn.ReadMessage()
+		if err != nil {
+			log.Println("Read error:", err)
+			break
+		}
+
+		// İlk mesaj dosya adı
+		if file == nil {
+			filename := filepath.Base(string(msg)) // sadece dosya adı, path değil
+			filePath := filepath.Join(uploadDir, filename)
+
+			file, err = os.Create(filePath)
+			if err != nil {
+				log.Println("File create error:", err)
+				conn.WriteMessage(messageType, []byte("Failed to create file"))
+				return
+			}
+			log.Println("Receiving file:", filePath)
+			conn.WriteMessage(messageType, []byte("Start sending chunks"))
+			continue
+		}
+
+		// "EOF" ile dosya tamamlandı
+		if string(msg) == "EOF" {
+			file.Close()
+			log.Println("File upload completed")
+			conn.WriteMessage(messageType, []byte("File uploaded successfully"))
+			break
+		}
+
+		// Chunk yaz
+		_, err = file.Write(msg)
+		if err != nil {
+			log.Println("Write error:", err)
+			conn.WriteMessage(messageType, []byte("Failed to write chunk"))
+			return
+		}
+	}
+}
+
+
 func main() {
-	
-	row("CDN SERVER")
 
+  table("TRANSFER")
 	PORT := argument("port")
-	ROOT := argument("root")
-	BASE := argument("base","")
 
 	if PORT == "" {
 		log.Fatal("port parameters needed: path=8080")
 		return
 	}
-	if ROOT == "" {
-		log.Fatal("root parameters needed: root=/path")
-		return
-	}
-	if( !strings.HasPrefix(BASE,"/") ){
-		BASE = "/" + BASE
-	}
 
-	
-	write("├─── PORT: ", PORT);
-	write("├─── ROOT: ", ROOT);
-	write("├─── BASE: ", BASE);
+	fs := http.FileServer(http.Dir("public"))
+	http.Handle("/", fs)
+	http.HandleFunc("/upload", uploadHandler)
 
 
-	ROOT = filepath.Clean(ROOT)
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-
-		reqPath := filepath.Clean(r.URL.Path)
-		reqPath  = strings.TrimPrefix(reqPath, BASE)
-		filePath := filepath.Join(ROOT, reqPath)
-
-		info, err := os.Stat(filePath)
-		if err != nil || info.IsDir() {
-				send404(w, r)
-				return
-		}
-
-		file, err := os.Open(filePath)
-		if err != nil {
-			http.Error(w, "File open error", 500)
-			return
-		}
-		defer file.Close()
-
-		// ---------- MIME ----------
-		ext := filepath.Ext(filePath)
-		mimeType := mime.TypeByExtension(ext)
-		if mimeType == "" {
-			mimeType = "application/octet-stream"
-		}
-
-		// ---------- HEADERS (MAX CACHE) ----------
-		w.Header().Set("Content-Type", mimeType)
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		w.Header().Set("Expires", "Fri, 31 Dec 9999 23:59:59 GMT")
-		w.Header().Set("Accept-Ranges", "bytes")
-
-		// ETag kapat (immutable dosya için gereksiz)
-		w.Header().Del("ETag")
-
-		w.WriteHeader(http.StatusOK)
-		io.Copy(w, file)
-	})
-
-	log.Println("CDN Server running on :" + PORT)
-	log.Println("Root:", ROOT)
+	write("Basic Server running on :" + PORT)
 	log.Fatal(http.ListenAndServe(":"+PORT, nil))
+
 }
-
-
-func send404(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
-    w.Header().Set("Pragma", "no-cache")
-    w.Header().Set("Expires", "0")
-    w.WriteHeader(http.StatusNotFound)
-    w.Write([]byte("404 Not Found"))
-}
-
-
-
-
-
-
-
 
 
 

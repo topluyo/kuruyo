@@ -24,22 +24,94 @@ function slugify(string $text): string{
 */
 
 
+function info($sql){
+
+  $mysqli = new mysqli("localhost","master","master","db");
+  if($mysqli->connect_errno){
+    die("DB Error");
+  }
+
+  if(!preg_match('/limit\s+[0-9]+/i',$sql)){
+    $sql .= " LIMIT 0";
+  }
+
+  $result = $mysqli->query($sql);
+  if(!$result){
+    die($mysqli->error);
+  }
+
+  $fields = $result->fetch_fields();
+
+  $typeMap = [
+    1   => "int",      // TINYINT
+    2   => "int",      // SMALLINT
+    3   => "int",      // INT
+    8   => "int64",    // BIGINT
+    4   => "float32",  // FLOAT
+    5   => "float64",  // DOUBLE
+    246 => "float64",  // DECIMAL
+    253 => "string",   // VARCHAR
+    254 => "string",   // CHAR
+    252 => "string",   // TEXT/BLOB
+    10  => "string",   // DATE
+    11  => "string",   // TIME
+    12  => "string",   // DATETIME
+    7   => "string"    // TIMESTAMP
+  ];
+
+  $struct = [];
+
+  foreach($fields as $f){
+
+    $k = $f->name;
+
+    $type = isset($typeMap[$f->type]) ? $typeMap[$f->type] : "string";
+
+    $property = ucfirst($k);
+    if(preg_match('/^[0-9]/', $property)){
+      $property = "DATA_" . $property;
+    }
+
+    $struct[$k] = [
+      $property,
+      $type,
+      "`db:\"".$k."\" json:\"".$k."\"`",
+      $k
+    ];
+  }
+
+  return $struct;
+}
+
 
 function first($sql){
-  $pdo = new PDO(
-      "mysql:host=localhost;dbname=db;charset=utf8mb4",
-      "master",
-      "master",
-      [
-          PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-          PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-      ]
-  );
-  $stmt = $pdo->prepare($sql);
-  $stmt->execute();
-  // Return result or null
-  return $stmt->fetch(PDO::FETCH_ASSOC);
+  try {
+    $pdo = new PDO(
+        "mysql:host=localhost;dbname=db;charset=utf8mb4",
+        "master",
+        "master",
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+        ]
+    );
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
+
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+
+  } catch (PDOException $e) {
+    /*
+    echo "SQL Hatası:<br>";
+    echo "<pre>".$sql."</pre>";
+    echo "Hata Mesajı: " . $e->getMessage();
+    */
+    echo "//".$sql."\n";
+    return null;
+  }
 }
+
 
 
 
@@ -112,7 +184,7 @@ if(isset($_GET['model'])){
 
   $sql_for_go = str_replace("\"","\\\"",$sql_for_go);
   
-  if(!preg_match("/LIMIT\s+\d+\s*$/",$sql_for_db)){
+  if(!preg_match("/\sLIMIT\s+\d+/",$sql_for_db)){
     $sql_for_db .= " LIMIT 1";
   }
 
@@ -158,25 +230,13 @@ if(isset($_GET['model'])){
   $struct = [];
 
   $sql_for_db = preg_replace('/\r\n|\r|\n/', ' ', $sql_for_db);;
-  //echo $sql_for_db;
-  //write( $db->sql(str_replace('\n'," ",$sql_for_db)) );
-  //exit();
-  
   
   
 
-  $data = first($sql_for_db);
+
+  $struct = info($sql_for_db);
+
   /*
-  write($sql_for_db);
-  if($data){ 
-    $data = $data[0]; 
-  }else{
-    $sql_for_db = substr($sql_for_db,0,strlen($sql_for_db)-7);
-    $data = $db->sql( $sql_for_db )[0]; 
-
-  }
-  */
-
   foreach($data as $k=>$d){
     $type = gettype($d);
     if($type=="integer") $type="int";
@@ -196,6 +256,17 @@ if(isset($_GET['model'])){
     }
     $response .= "}";
   }
+  */
+
+  if($model_type=="Model" || $model_type=="List"){
+    $struct_name = "Struct_" . $name;
+  }
+
+  $response = "type ".$struct_name." struct {\n";
+  foreach($struct as $s){
+    $response .= "  ".str_pad($s[0],24," ")."  ". str_pad($s[1],10," ")."  ". str_pad($s[2],24," ")."\n";
+  }
+  $response .= "}";
   
   if($model_type=="Add"){
 

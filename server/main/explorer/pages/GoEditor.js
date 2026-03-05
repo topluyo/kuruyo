@@ -132,6 +132,7 @@ function InitGoEditor(){
         //detail:"Standart giriÅŸ Ã§Ä±kÄ±ÅŸ fonksiyonlarÄ±",
         //unit:"byte"
       }))
+      
 
 
       parameters = parameters.map(e => ({

@@ -59,7 +59,7 @@ function bash($command) {
 
 # Main
 <div fix style="--fix-width:100px;">
-  <a safe hover target="_blank" href="/master/root">📁 Master</a>
+  <a safe hover target="_blank" href="/explorer/root">📁 Explorer</a>
   <a safe hover target="_blank" href="/adminer">🗄️ Database</a>
   <a safe hover target="_blank" href="/goeditor">💻 GoEditor</a>  
 </div>

@@ -17,7 +17,7 @@ class FileManager{
 
   public static $SHOW_FOLDER_SIZE = false;
 
-  public static $SECURITY_ENABLED = true;
+  public static $SECURITY_ENABLED = false;
 
   public static $SECURITY_USERS = [];
 

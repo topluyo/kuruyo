@@ -342,7 +342,7 @@ class Service{
 
         $exec = "echo 'ERROR'";
         if($lang=="go"){
-            $exec = "/program/go run main.go port={$port}";
+            $exec = "/program/go run . port={$port}";
             shell_exec("cd $path;/program/go mod init app > /dev/null 2>&1");
             shell_exec("cd $path;/program/go mod tidy > /dev/null 2>&1");
         }else if($lang=="node"){
@@ -686,8 +686,34 @@ if(count($args)<2){
 
 $action = $args[0];
 $param  = $args[1];
+$port   = "";
 
-if($action=="using" || $action=="pid"  || $action=="kill" || ($action=="info" && is_numeric($param)) || ($action=="log" && is_numeric($param))){
+if($action=="using" || $action=="pid"  || $action=="kill" || ($action=="info" && is_numeric($param)) || ($action=="log" && is_numeric($param)) || ($action=="reload" && is_numeric($param)) || ($action=="restart" && is_numeric($param)) ){
+    $service = glob(SYSTEMD."*-".$param.".service");
+    if(count($service)==1){
+        $service = $service[0];
+        
+        logc($service,"frontBlue");
+        $pattern = '/^\/etc\/systemd\/system\/kuruyo-(.+)-([0-9]+)\.service$/';
+        if (preg_match($pattern, $service, $matches)) {
+            $param = $matches[1];
+            $port = $matches[2];
+            define("NAME", $param);
+            define("FILE","/web/config/".$param."/routers.json");
+            define("JSON", @file_get_contents(FILE));
+            if(!JSON){
+                logc("[x] routers.json dosyası bulunamadı! [".FILE."]!","backRed");
+                die();
+            }
+            define("DATA", json_decode(JSON, true));
+            if (!DATA) {
+                logc("[x] config.json JSON formatına uygun değil [".FILE."]!","backRed");
+                die();
+            }
+        }
+    }else{
+        logc("[x] Service is not installed","frontRed");
+    }
 
 }else{
     //+ FILE AREA
@@ -739,25 +765,18 @@ if($action=="hard"){
     table(Service::GetInfo(),"pid,port,domain,active,service,memory,cpu,uptime");
 }
 
+if($action=="delete"){
+    $info = Service::GetInfo();
+    json($info);
+    foreach($info as $i){
+        Service::Kill($i["port"]);
+    }
+    table(Service::GetInfo(),"pid,port,domain,active,service,memory,cpu,uptime");
+}
+
 
 if($action=="log"){
-    if(is_numeric($param)){
-        $info = Service::Using($param);
-        if($info===false){
-            $service = glob(SYSTEMD."*-".$param.".service");
-            if(count($service)==1){
-                $service = basename($service[0]);
-                Service::bash("journalctl -u ".$service ." -n 100 -f");    
-            }
-        }else{
-            table($info);
-            Service::bash("journalctl -u ".$info['service'] ." -n 100 -f");
-        }
-    }else{
-        $info = Service::Using(DATA['http']);
-        table($info);
-        Service::Log($info['service']);
-    }
+    Service::bash("journalctl -u kuruyo-".$param.($port!=""?("-".$port):"")." -n 100 -f");
 }
 
 if($action=="security"){
@@ -817,10 +836,19 @@ if($action=="ups"){
 
 
 if($action=="restart"){
-    Service::Kill(DATA['http'],0);
-    Service::Route();
-    sleep(2);
-    table(Service::GetInfo(),"pid,port,domain,active,service,memory,cpu,uptime");
+
+    if(is_numeric($param)){
+        $port = $param;
+        if(!$port) die(logc("[X] kuruyo up [FOLDER] [PORT] port is empty","frontRed"));
+        Service::Kill($port);
+        Service::Up($port);
+        Service::WriteInfo();
+    }else{
+        Service::Kill(DATA['http'],0);
+        Service::Route();
+        sleep(2);
+        table(Service::GetInfo(),"pid,port,domain,active,service,memory,cpu,uptime");
+    }
 }
 
 if($action=="start"){
@@ -833,10 +861,28 @@ if($action=="start"){
 
 
 if($action=="reload"){
-    $info = Service::Using(DATA['http']);
-    if(!$info) die();
-    //shell_exec("systemctl reload ".$info['service']);
-    shell_exec("/bin/kill -s SIGUSR1 ".$info['pid']);
-    logc("[+] Restarted ".$info['service'],"frontGreen");
-    Service::WriteInfo();
+
+    
+    
+    if(is_numeric($port)){
+        $info = Service::Using($port);
+        if($info===false){
+            $service = glob(SYSTEMD."*-".$port.".service");
+            if(count($service)==1){
+                $service = basename($service[0]);
+                Service::bash("systemctl restart ".$service);
+                Service::bash("journalctl -u ".$service ." -n 10 -f");    
+            }
+        }else{
+            table($info);
+            Service::bash("systemctl restart ".$info['service']);
+            Service::bash("journalctl -u ".$info['service'] ." -n 10 -f");
+        }
+    }else{
+        $info = Service::Using(DATA['http']);
+        if(!$info) die();
+        shell_exec("/bin/kill -s SIGUSR1 ".$info['pid']);
+        logc("[+] Restarted ".$info['service'],"frontGreen");
+        Service::WriteInfo();
+    }
 }
