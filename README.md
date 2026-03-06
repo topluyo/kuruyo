@@ -2,6 +2,17 @@
 
 Go ile geliştirilmiş, yüksek performanslı **reverse proxy** ve **multi-domain routing** sistemi.
 
+
+## Hızlı Kurulum
+```bash
+apt update
+apt install curl unzip
+curl -L -o kuruyo.zip https://github.com/topluyo/kuruyo/archive/refs/heads/master.zip
+unzip kuruyo.zip
+mv kuruyo-main/ /web
+rm kuruyo.zip
+```
+
 ---
 
 ## � Dil Seçimi / Language Selection
