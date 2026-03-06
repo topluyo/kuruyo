@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>kuruyo.com</title>
+  <meta name="description" content="{DESCRIPTION}">
+  <meta name="keywords" content="{KEYWORDS}">
+  <meta name="author" content="{AUTHOR}">
+  <meta name="robots" content="index, follow">
+  <meta name="googlebot" content="index, follow">
+  <link rel="canonical" href="{{URL}}"> 
+  <link rel="icon" href="{ICON}">
+
+  <meta property="og:title" content="{TITLE}"/>
+  <meta property="og:description" content="{DESCRIPTION}"/>
+  <meta property="og:image" content="{IMAGE}"/>
+  <meta property="og:locale" content="{LANGUAGE}"/>
+  <meta property="og:type" content="article" />
+  <style>
+    body{font-family:system-ui;}
+  </style>
+</head>
+<body theme="soft">
+
+
+<section id="Anasayfa" style="--x: 0; --y: 0; --w: 18; --h: 10; --margin-top: 0px; --margin-left: 77.125px;" class="slide" animotor-container="">
+  
+  
+<div item="text" class="vertical-center frontlight horizontal-center" style="--x: 6; --y: 2; --w: 6; --h: 2;" animotor="fade-in-flip" animotor-duration="500" animotor-delay="120" y-axis="center" x-axis="center" spellcheck="false">
+    <h1>kuruyo.com</h1>
+  </div><div item="text" class="vertical-center horizontal-center" style="--x: 4; --y: 4; --w: 10; --h: 1; font-weight: bold;" animotor="fade-in-flip" animotor-duration="500" animotor-delay="120" spellcheck="false" x-axis="center" y-axis="center"><span style="font-weight: normal;">Go ile geliştirilmiş,</span><div></div><div style="font-weight: 400;"></div></div><a item="button" href="/install.sh" target="_blank" button="" class="horizontal-center vertical-center primary backlight" style="--x: 6; --y: 8; --w: 6; --h: 1;" animotor="fade-in-flip" animotor-duration="200" animotor-delay="120" y-axis="center" x-axis="center" spellcheck="false">indir</a><div item="text" class="vertical-center horizontal-center" style="--x: 4; --y: 5; --w: 10; --h: 1; font-weight: bold;" animotor="fade-in-flip" animotor-duration="500" animotor-delay="120" spellcheck="false" x-axis="center" y-axis="center"><span style="font-weight: normal;"><span style="">&nbsp;</span><span style="">yüksek performanslı&nbsp;reverse proxy,</span></span><div></div><div style="font-weight: 400;"></div></div><div item="text" class="vertical-center horizontal-center" style="--x: 4; --y: 6; --w: 10; --h: 1; font-weight: bold;" animotor="fade-in-flip" animotor-duration="500" animotor-delay="120" spellcheck="false" x-axis="center" y-axis="center"><span style="font-weight: normal;">multi-domain routing&nbsp;sistemi</span><div></div><div style="font-weight: 400;"></div></div></section>
+
+<style theme="base">
+/* @reset */
+*{box-sizing: border-box;}
+h1,h2,h3,h4,h5,h6,p,pre { margin: 0; padding: 0;}
+a{text-decoration:none;}
+space,.space,[space]{flex:1;}
+body img{object-fit: contain;}
+html,body{ 
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  height:100%;
+  cursor:default;
+  user-select:none;
+  scroll-behavior: smooth;
+}
+
+body{
+  --block:32px;     /* default block width */
+  --item-pad: 0px;  /* default item pad , 2px or 0px */
+  --back: #FFF;
+  --front: #000;
+  --light: #8882;
+  --primary: #17F;
+  --primary-text: #FFF;
+  --secondary: #ed7077;
+  --secondary-text: #FFF;
+  --gradient: linear-gradient(45deg, #0048ff 20%, #37d9ff);
+  --dark-gradient: linear-gradient(45deg, #0037c0 20%, #0b95b4);
+  --font-scale: 1;
+}
+
+main{
+  position: relative;
+  height: 100%;
+  overflow-x:hidden;
+}
+
+section{
+  display:block;
+  position: relative;
+  height: 100%;
+  width:100%;
+  top:0;
+  height: calc(var(--block)* var(--h) + var(--padding-top) + var(--padding-bottom));
+  font-size:calc(var(--block) * var(--font-scale) * 0.48);
+}
+
+section.slide{
+  height:100%;
+  /*+ TEST +*/
+  /*min-height:100%;*/
+}
+
+
+/*---- design color ----*/
+section{
+  background-color: white;
+}
+.primary{
+  background: var(--primary);
+  color: var(--primary-text);
+}
+.underline{
+  color: inherit;
+  background:transparent;
+  text-decoration: underline;
+}
+.inverse{
+  background:color-mix(in srgb, var(--front) 94%, var(--back)); 
+  color:var(--back);
+}
+.light{
+  background: var(--back-light);
+  background: color-mix(in srgb, var(--back) 94%, var(--front));
+}
+.inverse.light{
+  background: var(--front-light);
+  background: color-mix(in srgb, var(--front) 99%, var(--back));
+}
+.frontlight{
+  -webkit-background-clip: text;
+  background-clip: text;
+  background-image: var(--gradient);
+  color: transparent;
+}
+.frontlight.inverse{
+  background-image: var(--dark-gradient);
+}
+.backlight{
+  background-image: var(--gradient);
+  color: white;
+}
+.backlight.inverse{
+  background-image: var(--dark-gradient);
+  color: white;
+}
+
+.hover,[hover]{position:relative;cursor:pointer;overflow:hidden;}
+.light,[light]{position:relative;overflow:hidden;}
+.hover:hover:after,[hover]:hover:after,.light:before,[light]:before{
+  content:"";
+  position:absolute;
+  left:0;right:0;top:0;bottom:0;
+  box-shadow:inset 0 0 0 1000px;
+  opacity:0.10;
+}
+
+
+/* custom-class   */
+.vertical-center {
+  display: inline-flex;
+  align-items: center;
+}
+.horizontal-center {
+  display: inline-flex;
+  justify-content: center;
+}
+.auto-width{
+  width:auto!important;
+}
+.auto-height{
+  height:auto!important;
+}
+[fit=cover]{object-fit: cover;}
+[fit=contain]{object-fit: contain;}
+[fit=fill]{object-fit: fill;}
+[fit=auto]{
+  object-fit: contain;
+  height: auto!important;
+  margin-top:calc((var(--height) - var(--width) / var(--natural-ratio))/2);
+}
+
+[x-axis=justify]{ display: block;text-align: justify;}
+[x-axis=start]{  display: inline-flex;justify-content: start;text-align: left;}
+[x-axis=center]{  display: inline-flex;justify-content: center;text-align: center;}
+[x-axis=end]{  display: inline-flex;justify-content: end;text-align: right;}
+
+[y-axis=none]{ display: block;}
+[y-axis=start]{  display: inline-flex;align-items: start;}
+[y-axis=center]{  display: inline-flex;align-items: center;}
+[y-axis=end]{  display: inline-flex;align-items: end;}
+
+
+/* POSITION */
+section{
+  overflow:hidden;
+  --padding-left    : 20px;
+  --padding-right   : 20px;
+  --padding-top     : 75px;
+  --padding-bottom  : 20px;
+  --margin-left : 0px;
+  --margin-top  : 0px;
+  --cx: var(--w);
+  --cy: var(--h);
+}
+
+[item=box] > *{
+  --padding-left    : 0px;
+  --padding-right   : 0px;
+  --padding-top     : 0px;
+  --padding-bottom  : 0px;
+  --margin-left     : 0px;
+  --margin-top      : 0px;
+}
+[item]{
+  position:absolute;
+  --width:calc(var(--w) * var(--block) - 4px);
+  --height:calc(var(--h) * var(--block) - 4px);
+  width:var(--width);
+  height:var(--height);
+  left:calc(var(--x) * var(--block) + var(--padding-left) + var(--margin-left));
+  top:calc(var(--y) * var(--block) + var(--padding-top) + var(--margin-top));
+  line-height:1.18;
+}
+
+[item="button"]{
+  border-radius: 4px;
+}
+
+[item=video]{
+  box-shadow: 0 0 0px 1px #888C;
+  border-radius: 0.25em;
+}
+
+
+@media only screen and (max-width: 600px) {
+  [item=text],[item=header],[item=image],[item=button],[item]{
+    position: relative;
+    left: unset;
+    top: unset;
+    height: auto;
+    --width:100%;
+    width: 100%;
+    margin-bottom: calc(var(--block) / 2);
+    margin-top: calc(var(--block) / 2);
+  }
+  [item=image]{
+    max-width:100%;
+    aspect-ratio: calc(var(--w) / var(--h));
+    height:unset;
+  }
+  [item=button]{
+    padding:.5em 1em;
+  }
+  body{
+    font-size:20px;
+  }
+  section {
+    height:unset!important;
+    font-size:20px;
+    padding-top:var(--padding-top);
+    padding-left:var(--padding-left);
+    padding-right:var(--padding-right);
+    padding-bottom:var(--padding-bottom);
+  }
+  
+
+}
+
+
+nav{  
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+nav a{
+  padding:16px;
+  color:inherit;
+  text-decoration:none;
+  font-weight: 700;
+}
+
+</style>
+
+
+<script theme="base" src="https://apps.asenax.com/documenter/animotor.js"></script>
+<script theme="base">
+  //+ RESIZE                                                  
+  window.$  = window.$ || ((e,s=document)=>s.querySelector(e))
+  window.$$ = window.$$ || ((e,s=document)=>Array.from(s.querySelectorAll(e)))
+  function resize(){
+    let width = window.innerWidth , heigth = window.innerHeight
+    $$("section").map(section=>{
+      var computed = getComputedStyle(section)
+      var paddingHeight = parseInt(computed.paddingTop) + parseInt(computed.paddingBottom);
+
+      var paddingWidth = parseInt(computed.paddingLeft) + parseInt(computed.paddingRight);
+      
+      let x = parseFloat( section.style.getPropertyValue("--x") )
+      let y = parseFloat( section.style.getPropertyValue("--y") )
+      let w = parseFloat( section.style.getPropertyValue("--w") )
+      let h = parseFloat( section.style.getPropertyValue("--h") )
+
+      let paddingLeft    = parseFloat( computed.getPropertyValue("--padding-left") )
+      let paddingRight   = parseFloat( computed.getPropertyValue("--padding-right") )
+      let paddingTop     = parseFloat( computed.getPropertyValue("--padding-top") )
+      let paddingBottom  = parseFloat( computed.getPropertyValue("--padding-bottom") )
+
+      width = section.offsetWidth - paddingLeft - paddingRight
+      height = section.clientHeight - paddingTop - paddingBottom
+
+      let k = width / w * 1.002
+
+      section.style.setProperty("--margin-top", "0px")
+      section.style.setProperty("--margin-left", "0px")
+
+      if( section.classList.contains("slide") ){
+        k = Math.min(width / w , height / h ) * 1.002
+        if( w/h > width/height ){ // horizontal-center
+          section.style.setProperty("--margin-top", (height - (width*(h/w))) / 2 + "px")
+        }else{
+          section.style.setProperty("--margin-left", (width - (height*(w/h))) / 2 + "px")
+        }
+      }
+      section.style.setProperty("--block", k + "px")
+    })
+  }
+  window.addEventListener('resize', function(event){ resize() });
+  document.addEventListener("DOMContentLoaded", resize )
+  resize();
+  //+  INVERSE color
+  setInterval(()=>{
+    let tops    = $$("section").map(e=> e.getBoundingClientRect().top ) 
+    let current = Math.max(... tops.filter(e=>e<15) )
+    let section    = $$("section")[ tops.indexOf(current) ]
+    if(section.classList.contains("inverse")){
+      //$$("nav")[0].classList.add("inverse")
+      $("nav").style.color="var(--back)"
+    }else{
+      //$$("nav")[0].classList.remove("inverse")
+      $("nav").style.color="var(--front)"
+    }
+  },100)
+</script>
+
+
+<nav>
+  <a href="#main" class="frontlight" style="font-size:1.75em;padding-right:1em;">kuruyo</a>
+  <space></space>
+  <a hover href="/install.sh">indir</a>
+</nav>
+
+<!---------------------------@base end--------------------------------------->
+<!--------------------------------------------------------------------------->
+<!--------------------------------------------------------------------------->
+<!--------------------------------------------------------------------------->
+
+
+<style theme="soft">
+  body[theme=soft]{
+    --primary:#9a34e7;
+    --secondary: #ed7077;
+    --primary-text:white;
+    --secondary-text:white;
+    --gradient: linear-gradient(45deg, #ed7077, #9a34e7 66%);
+    --dark-gradient: linear-gradient(45deg, #c31432, #240b36);
+    /* linear-gradient(45deg, #ed7077, #9a34e7 66%) */
+  }
+  body[theme=soft] nav{
+    width: calc(100% - 40px);
+    backdrop-filter: blur(10px);
+    background:rgba(240, 240, 255, 0.1);
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    border-radius: 8px;
+    padding: 0px 12px;
+    padding-right: 9px;
+    box-shadow: 0px 1px 5px #0004,0px -1px 6px #FFF4,inset 0px 0px 0px 1px #FFF5;
+    box-shadow: inset 0px 0px 0px 1px #888C;
+    overflow:hidden;
+  }
+  body[theme=soft] [item="button"]{
+    border-radius: 1000px;
+  }
+  body[theme=soft] .backlight{
+    transition:box-shadow .2s;
+  }
+  body[theme=soft] .backlight:hover{
+    box-shadow:0 0 40px var(--primary);
+  }
+</style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<style theme="company">
+  body[theme=company] nav{
+    backdrop-filter:blur(6px);
+    box-shadow:0 0 10px #0002;
+  }
+</style>
