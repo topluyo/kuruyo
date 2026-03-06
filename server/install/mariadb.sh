@@ -1,5 +1,10 @@
 #!/bin/bash
 
+echo "==========================================="
+echo "==              MARIADB                  =="
+echo "==========================================="
+
+
 export DEBIAN_FRONTEND=noninteractive
 
 echo "🔧  Updating system..."
