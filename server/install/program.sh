@@ -1,5 +1,10 @@
 #!/bin/bash
 
+echo "==========================================="
+echo "==              /program                ==="
+echo "==========================================="
+
+
 ln -sf "/program/files/node/bin/node" /usr/local/bin/node
 ln -sf "/program/files/node/bin/npm" /usr/local/bin/npm
 ln -sf "/program/files/node/bin/npx" /usr/local/bin/npx
