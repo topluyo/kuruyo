@@ -1,7 +1,9 @@
 {
   "ip": "77.92.144.37",
   "http": 2086,
-  "https": 2096,
+  "https": 0,
+  "healt": false,
+  "log": "/web/.log/system.log",
   "routes": {
     "#backup":{
       "description": "Bu servise günlük değişen token ile curl isteği atılarak erişilebilir.",
@@ -9,13 +11,13 @@
       "serve": "php:/web/server/backup",
       "levels": ["basic"]
     },
-    "#console":{
+    "example.com/!console":{
       "description": "Bu servise içerdeki belirlenen parola ile giriş yapılır",
       "ports": "18000",
       "serve": "go:/web/server/terminal",
       "levels": ["password"]
     },
-    "#main":{
+    "example.com/!main":{
       "description": "Bu servise passwordda belirlenen veri ile giriş yapılabilir.",
       "ports":"19000-19004",
       "serve": "php:/web/server/main",
@@ -35,16 +37,8 @@
     }
   },
   "levels": {
-    "anitkabir":{
-      "token": "[YOUR PASSWORD]"
-    },
     "password":{
       "token":"[ YOUR PASSWORD ]"
-    },
-    "ev":{
-      "ips":[
-        "0.0.0.0"
-      ]
     },
     "basic":{
       "rate":["10r 10s 20w"]
