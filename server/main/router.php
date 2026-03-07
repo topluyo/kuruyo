@@ -3,8 +3,8 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-
 $request = $_SERVER['REQUEST_URI'];
+$request = substr($request,strlen($_SERVER['HTTP_HOST_PATH'] | ""));
 
 if (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
   $_SERVER['REQUEST_SCHEME'] = $_SERVER['HTTP_X_FORWARDED_PROTO'];
@@ -19,8 +19,10 @@ if (preg_match('/\/\./', $request)) {
   die("<html lang='en'><head><title>403 - Forbidden</title></head><body style='user-select:none;background:#CCC;font-size:5vmin;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui;height: 100%;padding: 0;margin: 0;'><div>Forbidden</div><div style='font-size:.5em;opacity:.6'>403</div></body></html>");
 }
 
+
 # Dosya varsa normal sun
 $path = __DIR__ . $request;
+
 if (is_file($path)) {
   return false; // PHP built-in server dosyayı direkt servis etsin
 }
