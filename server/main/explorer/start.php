@@ -3,7 +3,7 @@
 require_once __DIR__."/engine.php";
 
 FileManager::DefineOptions([
-  "MASTER_URL" => "/explorer/",
+  "MASTER_URL" => FileManager::path($_SERVER["HTTP_HOST_PATH"] | "" , "/explorer/" ),
   "BACK_END_FILE_MANAGER_ROOT" => "/",
   "CREATE_THUMBNAIL" => false,
   "THUMBNAIL_WIDTH" => [60],
@@ -12,6 +12,7 @@ FileManager::DefineOptions([
   "SECURITY_USERS" => [ "XXXXXXXXXXXXXXXXX" => "XXXXXXXXXXXXXXXXXX" ],
   "LOGIN_HASH" => "XXXXXXXXXXXXXXX",
 ]);
+
 
 function FileManagerStart(){
   $_GET["base"] = FileManager::$MASTER_URL;
