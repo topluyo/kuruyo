@@ -59,9 +59,9 @@ function bash($command) {
 
 # Main
 <div fix style="--fix-width:100px;">
-  <a safe hover target="_blank" href="/explorer/root">📁 Explorer</a>
-  <a safe hover target="_blank" href="/adminer">🗄️ Database</a>
-  <a safe hover target="_blank" href="/goeditor">💻 GoEditor</a>  
+  <a safe hover target="_blank" href="<?= $_SERVER['HTTP_HOST_PATH'] ?>/explorer/root">📁 Explorer</a>
+  <a safe hover target="_blank" href="<?= $_SERVER['HTTP_HOST_PATH'] ?>/adminer">🗄️ Database</a>
+  <a safe hover target="_blank" href="<?= $_SERVER['HTTP_HOST_PATH'] ?>/goeditor">💻 GoEditor</a>  
 </div>
 
 
