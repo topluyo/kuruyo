@@ -412,7 +412,9 @@ func fast(){
 				req.URL.Scheme = backend.Scheme
 				req.URL.Host = backend.Host
 				clientIP := RealIP(req)
-				req.Header.Set("X-Forwarded-For", clientIP)
+				req.Header.Set("X-Forwarded-For", clientIP
+				req.Header.Set("HOST_PATH", path)
+
 				/*
 				if clientIP, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
 					prior := req.Header.Get("X-Forwarded-For")
