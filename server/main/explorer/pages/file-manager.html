@@ -1,20 +1,19 @@
-<base href="/pages/" target="_blank">
-
+<head>
 <meta charset="utf8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="<?= addslashes($_GET['base']) ?>/?page=FileManager.js"></script>
-<script src="<?= addslashes($_GET['base']) ?>/?page=Icons.js"></script>
-<script src="<?= addslashes($_GET['base']) ?>/?page=ProgressBar.js"></script>
-<script src="<?= addslashes($_GET['base']) ?>/?page=GoEditor.js"></script>
+<script src="<?= FileManager::path($_GET['base'],"?page=FileManager.js") ?>"></script>
+<script src="<?= FileManager::path($_GET['base'],"?page=Icons.js") ?>"></script>
+<script src="<?= FileManager::path($_GET['base'],"?page=ProgressBar.js") ?>"></script>
+<script src="<?= FileManager::path($_GET['base'],"?page=GoEditor.js") ?>"></script>
 
 <title>/</title>
 
-<link rel="stylesheet" href="<?= addslashes($_GET['base']) ?>/?page=ModalView.css">
-<link rel="stylesheet" href="<?= addslashes($_GET['base']) ?>/?page=ProgressBar.css">
+<link rel="stylesheet" href="<?= FileManager::path($_GET['base'],"?page=ModalView.css") ?>">
+<link rel="stylesheet" href="<?= FileManager::path($_GET['base'],"?page=ProgressBar.css") ?>">
 
 
 <link type="image/x-icon" rel="shortcut icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMWVtIiBoZWlnaHQ9IjFlbSIgdmlld0JveD0iMCAwIDI0IDI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KICA8cGF0aCBmaWxsPSIjZjE5ZDM3IiBkPSJNMTEgNWMtMS42MjkgMC0yLjMwNS0xLjA1OC00LTNoLTd2MjBoMjR2LTE3aC0xM3oiPjwvcGF0aD4NCjwvc3ZnPg==">
-
+</head>
 <script>
 path = "<?=  addslashes($_GET['path']) ?>";
 base = "<?=  addslashes($_GET['base']) ?>";
