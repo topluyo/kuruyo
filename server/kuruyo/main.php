@@ -322,7 +322,7 @@ class Service{
         
         $base = explode("/",$domain);
         array_shift($base);
-        $base = join("/",$base);
+        $base = "/".join("/",$base);
         
         logc(">>> $base");
 
