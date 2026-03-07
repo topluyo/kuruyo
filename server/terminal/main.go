@@ -7,6 +7,9 @@ import (
 	"os/exec"
 	"os"
 	"strings"
+	"unicode"
+	"strconv"
+	"path/filepath"
 	"github.com/creack/pty"
 	"github.com/gorilla/websocket"
 )
@@ -95,6 +98,7 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 }
 
 func access(r *http.Request) bool {
+	return false
 	cookie, err := r.Cookie("SESTERMINAL")
 	if err != nil {
 		return true
@@ -103,17 +107,79 @@ func access(r *http.Request) bool {
 }
 
 func main() {
-	http.Handle("/", http.FileServer(http.Dir("static")))
-	http.HandleFunc("/ws", handleWS)
 
+	
 	port := argument("port")
+	base := enviroment("KURUYO_BASE")
 	if(port==""){
 		log.Fatal("[X] server port not defined")
 		return
 	}
 
+	
+	write("port=",port)
+	write("base=",base)
+
+	
+	
+	write(base+"/ws")
+	http.HandleFunc(base+"/ws", handleWS)
+
+	
+	ROOT := "/web/server/terminal/static"
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		reqPath := filepath.Clean("/" + r.URL.Path)
+		reqPath = strings.TrimPrefix(reqPath, base)
+		filePath := filepath.Join(ROOT, reqPath)
+
+		write(filePath)
+
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, private")
+		w.Header().Set("Pragma", "no-cache")
+
+		// Path traversal koruması
+		if !strings.HasPrefix(filePath, ROOT) {
+			http.NotFound(w, r)
+			return
+		}
+
+		info, err := os.Stat(filePath)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		// Eğer dizinse → index.html ekle
+		if info.IsDir() {
+			indexPath := filepath.Join(filePath, "index.html")
+
+			indexInfo, err := os.Stat(indexPath)
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+
+			filePath = indexPath
+			info = indexInfo
+		}
+
+		file, err := os.Open(filePath)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		defer file.Close()
+
+		http.ServeContent(w, r, info.Name(), info.ModTime(), file)
+	})
+
+	
+
+	
+	
+	table("TERMINAL STARTED:"+port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
-	log.Println("Server started at http://localhost:"+port)
+
 }
 
 
@@ -126,4 +192,53 @@ func argument(a string) string{
 		}
 	}
 	return response
+}
+
+func enviroment(a string) string{
+	return os.Getenv(a)
+}
+
+func write(values ...interface{}) {
+	originalFlags := log.Flags()
+	log.SetFlags(0)
+	log.Println(values...)
+	log.SetFlags(originalFlags)
+}
+
+func center(text string) string {
+	const width = 48
+	if len(text) >= width {
+		return text // return as-is if longer than width
+	}
+	padding := (width - len(text)) / 2
+	return strings.Repeat(" ", padding) + text + strings.Repeat(" ", width-len(text)-padding)
+}
+
+func table(name string){
+	// █
+	write("╔════════════════════════════════════════════════╗") // 50 Char
+	write("║"+center(name)+"║")
+	write("╚════════════════════════════════════════════════╝") // 50 Char
+}
+
+func row(name string){
+	// █
+	write("┌────────────────────────────────────────────────┐") // 50 Char
+	write("│"+center(name)+"│")
+	write("└────────────────────────────────────────────────┘") // 50 Char
+}
+
+func ToNumber(number string) int {
+	numStr := ""
+	for _, r := range number {
+		if unicode.IsDigit(r) {
+			numStr += string(r)
+		} else {
+			break
+		}
+	}
+	if numStr == "" { return 0 }
+	num, err := strconv.Atoi(numStr)
+	if err != nil { return 0 }
+	return num
 }
