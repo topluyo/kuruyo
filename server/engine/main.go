@@ -44,6 +44,7 @@ type Server struct {
 	HTTP           int                          `json:"http"`
 	HTTPS          int                          `json:"https"`
 	Log            string                       `json:"log"`
+	Healt          bool                         `json:"healt"`
 	Domains        map[string]map[string]*Route
 	Levels         map[string]*Level            `json:"levels"`
 	Routes         map[string]*Route            `json:"routes"`
@@ -198,14 +199,13 @@ func (r *Route) RunningBackEnd(url string) *url.URL {
 		return nil
 	}
 	if n == 1 {
-		if len(r.backendUp) == n && !r.backendUp[0] {
+		if server.Healt && len(r.backendUp) == n && !r.backendUp[0] {
 			log.Println("Backend is down")
 			return nil
 		}
 		return r.Backends[0]
 	}
 
-	write("Balancer is",r.Balancer)
 	if(r.Balancer>1){
 		return r.Backends[BalancerHash(url,r.Balancer)]
 	}
@@ -213,6 +213,9 @@ func (r *Route) RunningBackEnd(url string) *url.URL {
 	start := atomic.AddUint64(&r.rrCounter, 1)
 	for i := 0; i < n; i++ {
 		idx := int((start + uint64(i)) % uint64(n))
+		if(server.Healt==false){
+			return r.Backends[idx]
+		}
 		if len(r.backendUp) == n {
 			if r.backendUp[idx] {
 				return r.Backends[idx]
@@ -412,19 +415,8 @@ func fast(){
 				req.URL.Scheme = backend.Scheme
 				req.URL.Host = backend.Host
 				clientIP := RealIP(req)
-				req.Header.Set("X-Forwarded-For", clientIP
-				req.Header.Set("HOST_PATH", path)
-
-				/*
-				if clientIP, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
-					prior := req.Header.Get("X-Forwarded-For")
-					if prior == "" {
-						req.Header.Set("X-Forwarded-For", clientIP)
-					} else {
-						req.Header.Set("X-Forwarded-For", prior+", "+clientIP)
-					}
-				}
-				*/
+				req.Header.Set("X-Forwarded-For", clientIP)
+				req.Header.Set("Host-Path","/"+path)
 				if req.TLS != nil {
 					req.Header.Set("X-Forwarded-Proto", "https")
 				} else {
@@ -730,7 +722,10 @@ func run(){
 				}
 				log.Printf("HTTPS worker %d listening on %s", id, httpsAddr)
 				if err := srv2.ServeTLS(ln, cfgCert, cfgKey); err != nil && err != http.ErrServerClosed {
-					log.Fatalf("https worker %d: %v", id, err)
+					write("https worker %d: %v", id, err)
+					row("HTTPS Cert ERROR")
+					write(center("make https:0 in router.json"))
+					os.Exit(1)
 				}
 			}(i)
 		}
@@ -756,15 +751,19 @@ func ready(){
 
 
 
-func argument(a string) string{
+func argument(key string, defaults ...string) string {
 	response := ""
-	for _,arg := range os.Args{
-		if(strings.HasPrefix(arg, a+"=") ){
-			response=strings.Split(arg, "=")[1]
-			response=strings.Trim(response, "\"")
+	for _, arg := range os.Args {
+		if strings.HasPrefix(arg, key+"=") {
+			response = strings.SplitN(arg, "=", 2)[1]
+			response = strings.Trim(response, "\"")
+			return response
 		}
 	}
-	return response
+	if len(defaults) > 0 {
+		return defaults[0]
+	}
+	return ""
 }
 
 var LOGIN_HTML []byte
@@ -781,8 +780,8 @@ func main(){
 	
 
 	cfgPath    = argument("config")
-	cfgCert    = "origin.pem"
-	cfgKey     = "origin.key"
+	cfgCert    = argument("cert", "/web/config/origin.pem")
+	cfgKey     = argument("key",  "/web/config/origin.key")
 
 	if(cfgPath==""){
 		write("[X] config=XXXX parameter needed.")
