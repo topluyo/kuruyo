@@ -33,7 +33,7 @@
     let start = new URLSearchParams(window.location.search).get('run');
     function init(){
 
-      socket = new WebSocket(`wss://${location.host}/ws`);
+      socket = new WebSocket(`${location.protocol=="http:"?"ws":"wss"}://${ (location.host+"/"+location.pathname+"/ws").split(/\/+/).join("/")  }`);
       socket.binaryType = "arraybuffer";
       socket.onopen = () => {
         term.write("┌────────────────────────────────────────────────┐\r\n")
