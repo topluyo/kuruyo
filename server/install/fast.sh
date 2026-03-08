@@ -2,5 +2,5 @@ echo "==========================================="
 echo "==              FAST NETWORK            ==="
 echo "==========================================="
 
-mv sysctl.conf /etc/sysctl.conf
+mv /web/server/install/sysctl.conf /etc/sysctl.conf
 sudo sysctl -p
