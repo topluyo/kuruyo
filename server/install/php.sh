@@ -19,9 +19,9 @@ EOF
 apt update
 
 
-sudo apt install -y software-properties-common
-sudo LC_ALL=C.UTF-8 add-apt-repository ppa:ondrej/php -y
-sudo apt update
+apt install -y software-properties-common
+LC_ALL=C.UTF-8 add-apt-repository ppa:ondrej/php -y
+apt update
 
 
 # Install PHP.
