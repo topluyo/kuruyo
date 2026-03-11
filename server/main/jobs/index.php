@@ -101,7 +101,7 @@ if(@$_GET['action']=="delete-jobs"){
 <br><br>
 
 <label for="cron-command">Cron Job Command:</label><br>
-<input type="text" id="cron-command" value="/web/jobs/every-minute.sh" style="width: 100%;" oninput="updateCronLine()">
+<input type="text" id="cron-command" value="/bin/bash /web/jobs/every-minute.sh" style="width: 100%;" oninput="updateCronLine()">
 
 <br><br>
 
