@@ -71,3 +71,7 @@ func ToNumber(number string) int {
 	if err != nil { return 0 }
 	return num
 }
+
+func ToString(num int) string {
+	return strconv.Itoa(num)
+}
