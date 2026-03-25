@@ -128,6 +128,32 @@ SQL;
 
 
 
+## Init Database
+<form method="post" action="?action=init-database#Database" fix style="--fix-width:100px;">
+  <input name="name" value="db">  
+  <button hover>Create</button>
+</form>
+<?php 
+if(@$_GET["action"]=="init-database"){
+  $name = $_POST["name"];
+    echo "<div muted>Message:</div><textarea readonly spellcheck=off style='font-family:monospace;width:100%;margin-top:1em;height:3em;'>";
+$cmd = <<<SQL
+mysql -u root -e "
+  CREATE DATABASE IF NOT EXISTS $name
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+  CREATE USER IF NOT EXISTS 'master'@'localhost' IDENTIFIED BY 'master';
+  GRANT ALL PRIVILEGES ON $name.* TO 'master'@'localhost';
+  FLUSH PRIVILEGES;
+"
+SQL;
+  echo bash($cmd);
+  echo "</textarea>";
+  echo "<script>setTimeout(e=>documenter.message('✅ $name Veri Tabanı Kuruldu'),1000)</script>\n";
+
+}
+?>
+
 
 
 # 💾 BackUp
