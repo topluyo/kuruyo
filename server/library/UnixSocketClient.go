@@ -7,24 +7,24 @@ import(
 
 	USAGE:
 	____________________________
-	var client *UnixSocketClientStruct
+	var client *UnixSocketClient
 	func main() {
-		client = UnixSocketClient("/web/sockets/21600-LOG.sock")
+		client = UnixSocketClientInit("/web/sockets/21600-LOG.sock")
 		var response string = client.Request("UserCount")
 	}
 */
 
-type UnixSocketClientStruct struct {
+type UnixSocketClient struct {
 	socketPath string
 	conn       net.Conn
 }
 
-func UnixSocketClient(socketPath string) *UnixSocketClientStruct {
+func UnixSocketClientInit(socketPath string) *UnixSocketClient {
 	conn, err := net.Dial("unix", socketPath)
 	if err != nil {
 		return nil
 	}
-	c := &UnixSocketClientStruct{
+	c := &UnixSocketClient{
 		socketPath: socketPath,
 		conn:       conn,
 	}
@@ -32,7 +32,7 @@ func UnixSocketClient(socketPath string) *UnixSocketClientStruct {
 	return c
 }
 
-func (c *UnixSocketClientStruct) Request(msg string) string {
+func (c *UnixSocketClient) Request(msg string) string {
 	if c.conn == nil {
 		return ""
 	}
@@ -53,7 +53,7 @@ func (c *UnixSocketClientStruct) Request(msg string) string {
 	return string(buf[:n])
 }
 
-func (c *UnixSocketClientStruct) Close() {
+func (c *UnixSocketClient) Close() {
 	if c.conn != nil {
 		c.conn.Close()
 		c.conn = nil
