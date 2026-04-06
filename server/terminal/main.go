@@ -54,6 +54,7 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 
 	// Start bash PTY
 	cmd := exec.Command("bash")
+	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
 	cmd.Dir = "/"
 	ptmx, err := pty.Start(cmd)
 	if err != nil {
