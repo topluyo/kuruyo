@@ -23,7 +23,7 @@ if (preg_match('/\/\./', $request)) {
 # Dosya varsa normal sun
 $path = __DIR__ . "/" . $request;
 if (is_file($path)) {
-  return false; // PHP built-in server dosyayı direkt servis etsin
+  return require($path); // PHP built-in server dosyayı direkt servis etsin
 }
 
 if(is_file($path."/index.php")){
