@@ -1,0 +1,1080 @@
+<script src="//hasandelibas.github.io/documenter/documenter.js?disable-html=true"></script>
+<meta charset="utf8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg" href="https://kodluyo.com/app/source/images/kodluyo.com.svg">
+<title>KodluyoEditor</title>
+<header>
+  <img src="https://kodluyo.com/app/source/images/kodluyo.com.svg" style="width:1.5em;height:1.5em;">
+  <div title="">KodluyoEditor</div>
+  <div class="space"></div>
+  
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+    body{
+      user-select:none;
+      font-family: "JetBrains Mono", monospace;
+      font-size:12px;
+      --header-height: 32px;
+    }
+    .theme-dark{
+      --back:#1e1e1e;
+    }
+    #FileEditor-TreeView{
+      overflow-y:auto;
+    }
+    .FileEditor-TreeView-Title{
+      padding:0 .2em;
+      padding-right:.5em;
+      padding-left: calc(var(--depth) * 1em + .5em);
+      gap:.25em;
+    }
+    .FileEditor-TreeView-Children{
+      x-padding-left:1em;
+    }
+    .FileEditor-TreeView-Title-Icon svg{
+      width:1.4em;height:1.4em;;
+    }
+    .FileEditor-TreeView-Title[type=dir] .FileEditor-TreeView-Title-Icon svg{
+      fill:#F90;
+    }
+    .FileEditor-TreeView-Title[ext=go] .FileEditor-TreeView-Title-Icon svg{
+      fill:#09F;
+    }
+
+    .FileEditor-TreeView-Title-Opened{
+      background:#8881;
+    }
+    .FileEditor-TreeView-Title-Current{
+      background:var(--primary);
+      color:var(--primary-text);
+    }
+    #Panel-Content{
+      font-size:.8em;
+      line-break: anywhere;
+      overflow-y:auto;
+    }
+    .Helper-Function,.Helper-Global-Variable,.Helper-Hint,.Helper-Class,.Helper-Hack,.Helper-Task{padding:0 .4em;}
+    .Helper-Function:before{
+      content:"▰";
+      color:#DE11BA;
+      margin-right:0.5em;
+    }
+    .Helper-Hint:before{
+      content:"▰";
+      color:#5F5;
+      margin-right:0.5em;
+    }
+    .Helper-Global-Variable:before{
+      content:"▰";
+      color:#4FF;
+      margin-right:0.5em;
+    }
+    .Helper-Class:before{
+      content:"▰";
+      color:#19F;
+      margin-right:0.5em;
+    }
+    .Helper-Hack:before{
+      content:"▰";
+      color:#F30;
+      margin-right:0.5em;
+    }
+    .Helper-Task:before{
+      content:"▰";
+      color:#FF0;
+      margin-right:0.5em;
+    }
+
+    .full{
+      width:100%;
+      height:100%;
+    }
+    content{
+      display: flex;
+      flex-direction: row;
+    }
+    left{
+      width:240px;
+    }
+    right{
+      width:240px;
+    }
+    middle{
+      flex:1;
+      padding:0;
+      overflow:hidden;
+    }
+
+    .flash-line {
+      background: rgba(255, 230, 0, 0.4);
+      transition: background 0.3s ease;
+    }
+
+    [over]{
+      display:inline-flex;
+      width:2em;
+      height:1.5em;
+      align-items:center;
+      justify-content:center;
+      border-radius:.25em;
+      cursor:pointer;
+    }
+    [over]:hover{
+      background:#8884;
+    }
+    [over] svg{
+      width:80%;
+      height:80%;
+    }
+
+  </style>
+
+  <script src="https://unpkg.com/monaco-editor@latest/min/vs/loader.js"></script>
+  <script src="https://unpkg.com/monaco-go/dist/monaco.contribution.js"></script>
+  <script>
+    require.config({ paths: { 'vs': 'https://unpkg.com/monaco-editor@latest/min/vs' } });
+
+    document.body.classList.add("theme-dark","disable-error")
+    const FileEditor = {}
+    FileEditor.root = function(){
+      let path = location.pathname.split("/editor/root")
+      path.shift()
+      return path.join("")
+    }
+    FileEditor.base = function(){
+      let path = location.pathname.split("/editor/root")
+      return path.shift() + "/editor"
+    }
+    
+    FileEditor.reload = function(){
+      documenter.post(FileEditor.base(),{"tree":FileEditor.root()}).then(e=>e.json()).then(e=>{
+        FileEditor.TreeView.Render(e)
+      })
+    }
+    FileEditor.reload();
+
+    FileEditor.TreeView = {}
+    FileEditor.TreeView.Render = function(data){
+      FileEditor.TreeView.files = data
+      FileEditor.TreeView.tree  = FileEditor.TreeView.BuildTree(data)
+      for(let i=0;i<FileEditor.root().split("/").filter(e=>e.trim()!="").length;i++){
+        FileEditor.TreeView.tree = FileEditor.TreeView.tree.children[0]
+      }
+      $("#FileEditor-TreeView").empty();
+      $("#FileEditor-TreeView").appendChild( FileEditor.TreeView.Render.Item(FileEditor.TreeView.tree) )
+    }
+
+    FileEditor.TreeView.Icons = {
+      "dir": documenter.render(`<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h207q16 0 30.5 6t25.5 17l57 57h320q33 0 56.5 23.5T880-640v400q0 33-23.5 56.5T800-160H160Zm0-80h640v-400H447l-80-80H160v480Zm0 0v-480 480Z"/></svg>`),
+      "file": documenter.render(`<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h287q16 0 30.5 6t25.5 17l194 194q11 11 17 25.5t6 30.5v447q0 33-23.5 56.5T720-80H240Zm280-560v-160H240v640h480v-440H560q-17 0-28.5-11.5T520-640ZM240-800v200-200 640-640Z"/></svg>`),
+      "plusFolder": documenter.render(`<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M560-320h80v-80h80v-80h-80v-80h-80v80h-80v80h80v80ZM160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h240l80 80h320q33 0 56.5 23.5T880-640v400q0 33-23.5 56.5T800-160H160Zm0-80h640v-400H447l-80-80H160v480Zm0 0v-480 480Z"/></svg>`),
+      "plusFile": documenter.render(`<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M440-240h80v-120h120v-80H520v-120h-80v120H320v80h120v120ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v480q0 33-23.5 56.5T720-80H240Zm280-520v-200H240v640h480v-440H520ZM240-800v200-200 640-640Z"/></svg>`),
+    }
+
+    FileEditor.TreeView.Render.Item = function(data,depth=0){
+      let parent = document.createElement("div")
+      parent.style.setProperty("--depth",depth)
+
+      let title = document.createElement("div")
+      title.classList.add("flex-x","center","FileEditor-TreeView-Title")
+      if(data.type=="file") title.classList.add("hover")
+      title.setAttribute("type",data.type)
+      title.setAttribute("path",data.path)
+      title.setAttribute("ext",data.path.split(".").pop())
+      
+      let icon = document.createElement("div")
+      icon.classList.add("FileEditor-TreeView-Title-Icon")
+      if(data.type=="dir"){
+        icon.appendChild(FileEditor.TreeView.Icons.dir.cloneNode(true))
+      }else{
+        icon.appendChild(FileEditor.TreeView.Icons.file.cloneNode(true))
+      }
+      title.appendChild(icon)
+      
+      let text   = document.createElement("div")
+      text.classList.add("space")
+      text.textContent = data.name
+      title.appendChild(text)
+
+
+      /*
+      if(data.type=="dir"){
+        let plusFolder = document.createElement("div")
+        plusFolder.appendChild(FileEditor.TreeView.Icons.plusFolder.cloneNode(true))
+        plusFolder.setAttribute("over","")
+        title.appendChild(plusFolder)
+
+        let plusFile = document.createElement("div")
+        plusFile.appendChild(FileEditor.TreeView.Icons.plusFile.cloneNode(true))
+        plusFile.setAttribute("over","")
+        title.appendChild(plusFile)
+      }
+      */
+      
+
+      
+
+      let children = document.createElement("div")
+      children.classList.add("FileEditor-TreeView-Children")
+      parent.appendChild(title)
+      parent.appendChild(children)
+
+      data.children=data.children.sort((a,b)=>{
+        if (a.type === "dir" && b.type === "file") return -1;
+        if (a.type === "file" && b.type === "dir") return 1;
+        if(a.name<b.name) return -1;
+        if(a.name>b.name) return 1;
+        return 0;
+      })
+
+
+      data.children.map(e=>{
+        children.appendChild(FileEditor.TreeView.Render.Item(e,depth+1))
+      })
+      return parent
+    }
+
+
+    FileEditor.TreeView.BuildTree = function(data,path){
+      const root = {
+        name:"root",
+        type:"dir",
+        children:[]
+      };
+      for(const item of data){
+        const parts = item.path.split("/").filter(Boolean);
+        let current = root;
+        parts.forEach((part,index)=>{
+          const isLast = index === parts.length - 1;
+          let existing = current.children.find(x => x.name === part);
+          if(!existing){
+            existing = { name:part, type:isLast ? item.type : "dir", children:[], path: item.path};
+            current.children.push(existing);
+          }
+          current = existing;
+        });
+      }
+      return root;
+    }
+
+
+    FileEditor.TreeView.BuildTree = function(data, path) {
+      const root = {
+        name: "root",
+        type: "dir",
+        children: [],
+        path: ""
+      };
+      for (const item of data) {
+        const parts = item.path.split("/").filter(Boolean);
+        let current = root;
+        let currentPath = "";
+        parts.forEach((part, index) => {
+          const isLast = index === parts.length - 1;
+          currentPath += "/" + part;
+          let existing = current.children.find(x => x.name === part);
+          if (!existing) {
+            existing = {
+              name: part,
+              type: isLast ? item.type : "dir",
+              children: [],
+              path: currentPath
+            };
+            current.children.push(existing);
+          }
+          current = existing;
+        });
+      }
+      return root;
+    };
+
+    window.editors = {}
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
+    
+    documenter.on("click","[type=file]",function(){
+      let menuItem = this
+      let path = this.getAttribute("path")
+      if(editors[path]){
+        $("middle").empty()
+        $("middle").appendChild(editors[path]._domElement)
+        editor = editors[path]
+        menuItem.classList.add("FileEditor-TreeView-Title-Opened")
+        $$(".FileEditor-TreeView-Title-Current").map(e=>e.classList.remove("FileEditor-TreeView-Title-Current"))
+        menuItem.classList.add("FileEditor-TreeView-Title-Current")
+        return
+      }
+      documenter.post(FileEditor.base(),{"cat":path}).then(e=>e.text()).then(e=>{
+        let code = e
+        let language = path.split(".").pop()
+        if(language=="js") language="javascript"
+        let element = document.createElement("div")
+        element.classList.add("full")
+        $("middle").empty()
+        $("middle").appendChild(element)
+        let editor = monaco.editor.create(element, {
+          value: code,
+          language: language,
+          tabSize: 2,
+          automaticLayout: true,
+          theme: 'master-'+(document.body.classList.contains("theme-dark")?"dark":"light"),
+          fontSize: 12,
+          fontFamily: 'JetBrains Mono',
+          renderLineHighlight: "none",
+        });
+        menuItem.classList.add("FileEditor-TreeView-Title-Opened")
+        $$(".FileEditor-TreeView-Title-Current").map(e=>e.classList.remove("FileEditor-TreeView-Title-Current"))
+        menuItem.classList.add("FileEditor-TreeView-Title-Current")
+        editor.path = path
+        window.addEventListener('resize', () => { editor.layout(); });
+        editors[path]=editor
+        window.editor = editor
+      })
+    })
+    window.addEventListener("keydown",function(event){
+      console.log(event)
+      if(event.ctrlKey && event.keyCode==83){
+        //
+        documenter.post(FileEditor.base(),{"save":editor.path,"data":Encode(editor.getValue())})
+        event.preventDefault();
+        return false;
+      }
+    })
+
+
+    const Encode = function(content){ return btoa(unescape(encodeURIComponent(content))) }
+
+    FileEditor.Helper = {}
+    FileEditor.Helper.reload = function(){
+      $("#Panel-Content").empty();
+      let hints     = Helper.Hints(Helper.Codes())
+      let hacks     = FileEditor.Helper.hacks = Helper.Hacks(Helper.Codes())
+      let tasks     = FileEditor.Helper.tasks = Helper.Tasks(Helper.Codes())
+      let clasess   = Helper.Go.Classes(Helper.Codes())
+      let globals   = FileEditor.Helper.globals = Helper.Go.GlobalVariables(Helper.Codes())
+      let functions = Helper.Go.Functions(Helper.Codes())
+
+      let fields    = FileEditor.Helper.fields = Helper.Go.Fields(Helper.Codes())
+
+
+
+      for(let index in hacks.sort((a,b)=>a.title.localeCompare(b.title))){
+        let element    = document.createElement("div")
+        element.textContent = hacks[index].title
+        element.classList.add("Helper-Hack","hover")
+        element.setAttribute("focus-path",hacks[index].path)
+        element.setAttribute("focus-line",hacks[index].line)
+        $("#Panel-Content").appendChild(element)
+      }
+
+      for(let index in tasks.sort((a,b)=>a.title.localeCompare(b.title))){
+        let element    = document.createElement("div")
+        element.textContent = tasks[index].title
+        element.classList.add("Helper-Task","hover")
+        element.setAttribute("focus-path",tasks[index].path)
+        element.setAttribute("focus-line",tasks[index].line)
+        $("#Panel-Content").appendChild(element)
+      }
+
+      for(let index in hints){
+        let element    = document.createElement("div")
+        element.textContent = hints[index].title.trim()
+        element.classList.add("Helper-Hint","hover")
+        element.setAttribute("focus-path",hints[index].path)
+        element.setAttribute("focus-line",hints[index].line)
+        $("#Panel-Content").appendChild(element)
+      }
+      
+
+
+      for(let name in globals){
+        let element    = document.createElement("div")
+        element.textContent = name + "->"+globals[name].type
+        element.classList.add("Helper-Global-Variable","hover")
+        element.setAttribute("focus-path",globals[name].path)
+        element.setAttribute("focus-line",globals[name].line)
+        
+        $("#Panel-Content").appendChild(element)
+      }
+
+
+      for(let name in clasess){
+        let element    = document.createElement("div")
+        element.textContent = name + " {}"
+        element.classList.add("Helper-Class","hover")
+        element.setAttribute("focus-path",clasess[name].path)
+        element.setAttribute("focus-line",clasess[name].line)
+        
+        $("#Panel-Content").appendChild(element)
+      }
+
+      for(let name in functions){
+        let parameters = functions[name].parameters
+        let returns    = functions[name].returns
+        let element    = document.createElement("div")
+        element.textContent = name + "("+parameters.join(",")+")->" + returns.join(",")
+        if(returns.length==0){
+          element.textContent = name + "("+parameters.join(",")+")"
+        }
+        element.classList.add("Helper-Function","hover")
+        element.setAttribute("focus-path",functions[name].path)
+        element.setAttribute("focus-line",functions[name].line)
+        $("#Panel-Content").appendChild(element)
+      }
+    }
+    setInterval(FileEditor.Helper.reload,2000)
+
+    FileEditor.Focus = function(path,line){
+      $("middle").empty()
+      $("middle").appendChild(editors[path]._domElement)
+      editor = editors[path]
+      $(".FileEditor-TreeView-Title[path='"+path+"']").classList.add("FileEditor-TreeView-Title-Opened")
+      $$(".FileEditor-TreeView-Title-Current").map(e=>e.classList.remove("FileEditor-TreeView-Title-Current"))
+      $(".FileEditor-TreeView-Title[path='"+path+"']").classList.add("FileEditor-TreeView-Title-Current") 
+
+
+      flashLine(editor, line);
+      editor.revealLineInCenter(line);
+      //editor.setPosition({ line, column: 1 });
+      //editor.focus();
+      
+    }
+    documenter.on("pointerdown","[focus-path]",function(e){
+      FileEditor.Focus(this.getAttribute("focus-path"),parseInt(this.getAttribute("focus-line")))
+      e.preventDefault()
+      return false;
+    })
+
+    function flashLine(editor, lineNumber, duration = 1500) {
+      const decorations = editor.deltaDecorations([], [{ range: new monaco.Range(lineNumber, 1, lineNumber, 1), options: { isWholeLine: true, className: 'flash-line' }}]);
+      setTimeout(() => { editor.deltaDecorations(decorations, []); }, duration);
+    }
+
+  </script>
+
+
+  <script>
+
+FileEditor.createIframe = function(parent){
+  let iframe = document.createElement("iframe")
+  parent.appendChild(iframe)
+  iframe.srcdoc = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8" />
+      <style>
+        html, body, #editor {
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background: transparent;
+        }
+      </style>
+    </head>
+    <body>
+      <div id="editor"></div>
+    </body>
+    </html>
+  `
+  return new Promise((resolve, reject) => {
+    iframe.onload = ()=>resolve(iframe);
+    iframe.onerror = reject;
+  });
+}
+
+  </script>
+
+
+
+</header>
+
+<content>
+  <left style="padding:0;" flex-y>
+    <div flex-x center>
+      <div space padding style="opacity:.8;">File System</div>
+      <div padding hover style="border-radius:.2em;" onclick="FileEditor.reload()">
+        <svg style="width:1em;height:1em;" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M314-115q-104-48-169-145T80-479q0-26 2.5-51t8.5-49l-46 27-40-69 191-110 110 190-70 40-54-94q-11 27-16.5 56t-5.5 60q0 97 53 176.5T354-185l-40 70Zm306-485v-80h109q-46-57-111-88.5T480-800q-55 0-104 17t-90 48l-40-70q50-35 109-55t125-20q79 0 151 29.5T760-765v-55h80v220H620ZM594 0 403-110l110-190 69 40-57 98q118-17 196.5-107T800-480q0-11-.5-20.5T797-520h81q1 10 1.5 19.5t.5 20.5q0 135-80.5 241.5T590-95l44 26-40 69Z"/></svg>
+      </div>
+    </div>
+    <div space id="FileEditor-TreeView"></div>
+  </left>
+  <middle></middle>
+  <right>
+    <div flex-y id="Panel-Functions" style="height:100%;">
+      <div flex-x center>
+        <div space padding style="opacity:.8;">Functions</div>
+        <div padding hover style="border-radius:.2em;" onclick="FileEditor.Helper.reload()">
+          <svg style="width:1em;height:1em;" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M314-115q-104-48-169-145T80-479q0-26 2.5-51t8.5-49l-46 27-40-69 191-110 110 190-70 40-54-94q-11 27-16.5 56t-5.5 60q0 97 53 176.5T354-185l-40 70Zm306-485v-80h109q-46-57-111-88.5T480-800q-55 0-104 17t-90 48l-40-70q50-35 109-55t125-20q79 0 151 29.5T760-765v-55h80v220H620ZM594 0 403-110l110-190 69 40-57 98q118-17 196.5-107T800-480q0-11-.5-20.5T797-520h81q1 10 1.5 19.5t.5 20.5q0 135-80.5 241.5T590-95l44 26-40 69Z"/></svg>
+        </div>
+      </div>
+      <div space id="Panel-Content"></div>
+    </div>
+  </right>
+</content>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+
+
+const Helper = {Go:{}}
+
+Helper.Hints = function(codes){
+  let response = [];
+  for(let path in codes){
+    let code  = codes[path]
+    let lines = code.split("\n");
+    lines.forEach((statement,line) => {
+      let match = statement.match(/\s*\/\/\@(.*)/);
+      if (match) {
+        response.push({title:match[1].trim(),path,line:line+1});
+      }
+    });
+  }
+  return response;
+}
+
+Helper.Hacks = function(codes){
+  let response = [];
+  for(let path in codes){
+    let code  = codes[path]
+    let lines = code.split("\n");
+    lines.forEach((statement,line) => {
+      let match = statement.match(/\s*\/\/\!(.*)/);
+      if (match) {
+        response.push({title:match[1].trim(),path,line:parseInt(line+1)});
+      }
+    });
+  }
+  return response;
+}
+
+
+Helper.Tasks = function(codes){
+  let response = [];
+  for(let path in codes){
+    let code  = codes[path]
+    let lines = code.split("\n");
+    lines.forEach((statement,line) => {
+      let match = statement.match(/\s*\/\/\-(.*)/);
+      if (match) {
+        response.push({title:match[1].trim(),path,line:line+1});
+      }
+    });
+  }
+  return response;
+}
+
+
+
+
+Helper.Codes = function(){
+  return Object.fromEntries(Object.values(editors).map(e=>[e.path,e.getValue()] ))
+}
+
+Helper.Go.Functions = function(codes){
+  let response = [];
+  for(let path in codes){
+    let code  = codes[path]
+    let lines = code.split("\n");
+    let commentLevel = 0;
+    lines.forEach((statement,line) => {
+      if(commentLevel==0 && !statement.trim().startsWith("//")){
+        let match = statement.match(/func\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*(\([^)]*\)|[A-Za-z0-9_\*\[\]]+)?/);
+        if (match) {
+          let name = match[1];
+          let params = match[2] ? match[2].split(",").map(e => e.trim()).filter(Boolean).map(e => e.split(/\s+/).join(":")) : [];
+          let returns = [];
+          if (match[3]) {
+            let ret = match[3].trim();
+            if (ret.startsWith("(")) {
+              ret = ret.slice(1, -1);
+              returns = ret.split(",").map(e => e.trim()).filter(Boolean);
+            } else {
+              returns = [ret];
+            }
+          }
+          response[name] = {parameters: params, returns: returns, name, line: line+1,path};
+        }
+      }
+      commentLevel += (statement.match(/\/\*/g) || []).length;
+      commentLevel -= (statement.match(/\*\//g) || []).length;
+    });
+  }
+  return response;
+};
+
+
+Helper.Go.Variables = function(codes){
+  let response = [];
+  for(let path in codes){
+    let code  = codes[path]
+    let lines = code.split("\n");
+
+    lines.forEach((line) => {
+      let match = line.match(/([a-zA-Z0-9_]*)\s*\:\=/);
+      if (match) {
+        response.push(match[1]);
+      }
+      match = line.match(/var ([a-zA-Z0-9_]*)\s*/);
+      if (match) {
+        response.push(match[1]);
+      }
+    });
+
+  }
+  response = [...new Set(response)];
+  return response;
+}
+
+
+Helper.Go.GlobalVariables = function(codes){
+  let response = [];
+  for(let path in codes){
+    let code  = codes[path]
+    let lines = code.split("\n");
+    let braceLevel = 0;
+    let commentLevel = 0;
+    let varBlock = false;
+    lines.forEach((statement,line) => {
+      let trimmed = statement.trim();
+      if(commentLevel==0 && !trimmed.startsWith("//")){
+
+        // var ( ... ) başlangıcı
+        if(braceLevel == 0 && trimmed.match(/^var\s*\($/)){
+          varBlock = true;
+        }
+
+        // var block bitişi
+        if(varBlock && trimmed == ")"){
+          varBlock = false;
+        }
+
+        // sadece global scope
+        if(braceLevel==0){
+
+          // x := ...
+          let match = statement.match(/([a-zA-Z0-9_]+)\s*\:\=/);
+          if (match) {
+            response[match[1]] = {name: match[1],path,line: line+1};
+          }
+
+          // tek satır normal var
+          // var x Type
+          match = statement.match(/var\s+([a-zA-Z0-9_]+)\s+([a-zA-Z0-9_\*\[\]\.]+)/);
+          if (match) {
+            response[match[1]] = {name: match[1],path,line: line+1,type: match[2]};
+          }
+
+          // var block içi:
+          // room Room = Room{
+          if(varBlock){
+            match = statement.match(/^\s*([a-zA-Z0-9_]+)\s+([a-zA-Z0-9_\*\[\]\.]+)/);
+            if(match){
+              response[match[1]] = {name: match[1],path,line: line+1,type: match[2]};
+            }
+          }
+        }
+      }
+      commentLevel += (statement.match(/\/\*/g) || []).length;
+      commentLevel -= (statement.match(/\*\//g) || []).length;
+      braceLevel += (statement.match(/{/g) || []).length;
+      braceLevel -= (statement.match(/}/g) || []).length;
+    });
+  }
+  delete(response[""])
+  return response;
+}
+
+
+Helper.Go.Classes = function(codes){
+  let response = {};
+  for(let path in codes){
+    let code  = codes[path]
+    let lines = code.split("\n");
+    lines.forEach((statement,line) => {
+      let match = statement.match(/type\s+([A-Za-z_][A-Za-z0-9_]*)\s+struct\s*/);
+      if (match) {
+        response[match[1]] = {name:match[1],path,line:line+1};
+      }
+    });
+  }
+  return response;
+}
+
+
+Helper.Go.Fields = function(codes){
+
+  let response = {};
+
+  for(let path in codes){
+
+    let code  = codes[path];
+    let lines = code.split("\n");
+
+    let currentStruct = null;
+
+    lines.forEach((statement, line) => {
+
+      /*
+      |--------------------------------------------------------------------------
+      | STRUCT START
+      |--------------------------------------------------------------------------
+      */
+
+      let structMatch = statement.match(
+        /type\s+([A-Za-z_][A-Za-z0-9_]*)\s+struct\s*\{/
+      );
+
+      if(structMatch){
+
+        currentStruct = structMatch[1];
+
+        if(!response[currentStruct]){
+          response[currentStruct] = {
+            name   : currentStruct,
+            path,
+            line   : line + 1,
+            fields : [],
+            methods: {}
+          };
+        }
+
+        return;
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | STRUCT END
+      |--------------------------------------------------------------------------
+      */
+
+      if(currentStruct && /^\s*\}\s*$/.test(statement)){
+        currentStruct = null;
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | FIELD
+      |--------------------------------------------------------------------------
+      */
+
+      if(currentStruct){
+
+        let fieldMatch = statement.match(
+          /^\s*([A-Za-z_][A-Za-z0-9_]*)\s+([^\s`]+)\s*(?:`([^`]*)`)?/
+        );
+
+        if(fieldMatch){
+
+          response[currentStruct].fields.push({
+            name : fieldMatch[1],
+            type : fieldMatch[2],
+            tag  : fieldMatch[3] || null,
+            line : line + 1,
+            path
+          });
+        }
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | METHOD (ONLY STRUCT METHODS)
+      |--------------------------------------------------------------------------
+      */
+
+      let methodMatch = statement.match(
+        /^\s*func\s*\(([^)]+)\)\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*([^{]*)/
+      );
+
+      if(!methodMatch) return;
+
+      let receiver   = methodMatch[1];
+      let name       = methodMatch[2];
+      let paramsRaw  = methodMatch[3].trim();
+      let returnsRaw = methodMatch[4].trim();
+
+      /*
+      |--------------------------------------------------------------------------
+      | EXTRACT RECEIVER TYPE
+      |--------------------------------------------------------------------------
+      */
+
+      let receiverTypeMatch = receiver.match(
+        /(?:\*\s*)?([A-Za-z_][A-Za-z0-9_]*)$/
+      );
+
+      let receiverType = receiverTypeMatch?.[1];
+
+      if(!receiverType){
+        return;
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | PARSE PARAMETERS
+      |--------------------------------------------------------------------------
+      */
+
+      let parameters = [];
+
+      if(paramsRaw){
+
+        paramsRaw.split(",").forEach(p => {
+
+          p = p.trim();
+          if(!p) return;
+
+          let parts = p.split(/\s+/);
+
+          if(parts.length >= 2){
+            parameters.push({
+              name: parts[0],
+              type: parts.slice(1).join(" ")
+            });
+          } else {
+            parameters.push({
+              name: null,
+              type: parts[0]
+            });
+          }
+        });
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | PARSE RETURNS
+      |--------------------------------------------------------------------------
+      */
+
+      let returns = [];
+
+      if(returnsRaw){
+
+        returnsRaw = returnsRaw
+          .replace(/^\(/, "")
+          .replace(/\)$/, "")
+          .trim();
+
+        if(returnsRaw){
+          returns = returnsRaw
+            .split(",")
+            .map(x => x.trim())
+            .filter(Boolean);
+        }
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | ENSURE STRUCT EXISTS (CROSS FILE SAFE)
+      |--------------------------------------------------------------------------
+      */
+
+      if(!response[receiverType]){
+
+        response[receiverType] = {
+          name   : receiverType,
+          path,
+          line   : line + 1,
+          fields : [],
+          methods: {}
+        };
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | ATTACH METHOD
+      |--------------------------------------------------------------------------
+      */
+
+      response[receiverType].methods[name] = {
+        name,
+        path,
+        line: line + 1,
+        parameters,
+        returns
+      };
+
+    });
+  }
+
+  return response;
+}
+
+require(['vs/editor/editor.main'], function () {
+
+  function createDependencyProposals(range, text) {
+    let codes = Helper.Codes()
+    let classes      = Helper.Go.Classes(codes)
+    let functions    = Helper.Go.Functions(codes)
+    let variables    = Helper.Go.GlobalVariables(codes)
+    let parameters   = []
+    //let parameters = detectGoCurrentFunctionParameters(text,range.startLineNumber-1)
+
+    functions = Object.keys(functions).map(e => ({
+      label: e, insertText: e ,  
+      range: range, kind: monaco.languages.CompletionItemKind.Function, sortText : "3",
+    }))
+
+    variables = Object.keys(variables).map(e => ({
+      label: e, insertText: e,
+      range: range, kind: monaco.languages.CompletionItemKind.Variable, sortText : "2",
+    }))
+
+    /*
+    parameters = parameters.map(e => ({
+      label: e, insertText: e,
+      range: range, kind: monaco.languages.CompletionItemKind.Variable, sortText : "1",
+    }))
+    */
+
+    classes = Object.keys(classes).map((e) => ({
+      label: e, insertText: e,
+      range: range, kind: monaco.languages.CompletionItemKind.Field, sortText: "4",
+    }));
+
+
+    let keywords = [
+      "int","string","double",
+      "if","else","for","return","func","var","const","struct","interface",
+      "switch","case","defer","go","map","chan","package","import"] //,"import","from","as","class","try","except","finally","with","assert","global","nonlocal","lambda","del","yield","in","is","not","and","or","as","True","False","None"]
+    keywords = keywords.map(e=>({
+      label:e,
+      insertText:e,
+      range:range,
+      kind: monaco.languages.CompletionItemKind.Keyword,
+      documentaion:"Standart anahtar kelimeler",
+      sortText:"9"
+    }))
+
+
+
+    console.log([...functions, ...variables, ...parameters,...keywords])
+    return [...functions, ...variables, ...parameters,...keywords]
+
+  }
+
+
+
+  
+  monaco.languages.registerCompletionItemProvider('go', {
+    triggerCharacters: ['.'],
+    provideCompletionItems: function (model, position) {
+
+
+      const lineContent = model.getLineContent(position.lineNumber);
+      const objectMatch = lineContent.slice(0, position.column - 1).match(/([a-zA-Z_][a-zA-Z0-9_]*)\.[a-zA-Z0-9_]*$/);
+
+      if (objectMatch) {
+        const objectName = objectMatch[1];
+        //! HERE WILL CONTINUE
+        console.log(objectName)
+        if( FileEditor.Helper.globals[objectName] ){
+          let type    = FileEditor.Helper.globals[objectName].type
+          let fields  = FileEditor.Helper.fields[type].fields
+          let methods = Object.values(FileEditor.Helper.fields[type].methods)
+          
+          fields  = fields.map(f=>({label:f.name,insertText:f.name,kind:monaco.languages.CompletionItemKind.Field,sortText:"4"}))
+          methods = methods.map(f=>({label:f.name,insertText:f.name,kind:monaco.languages.CompletionItemKind.Function,sortText:"5"}))
+            
+
+          return {suggestions:[...fields,...methods]}
+
+        }else{
+          return null
+        }
+        
+      }
+      
+      var word = model.getWordUntilPosition(position);
+      var range = {
+        startLineNumber: position.lineNumber,
+        endLineNumber: position.lineNumber,
+        startColumn: word.startColumn,
+        endColumn: word.endColumn
+      };
+      return {
+        suggestions: createDependencyProposals(range, model.getValue())
+      };
+    },
+  })
+
+
+})
+
+
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+  require(['vs/editor/editor.main'], function () { 
+    if(!monaco.__customCommentsInstalled){
+
+      monaco.languages.getLanguages().find(e=>e.id=="javascript"||e.id=="php"||e.id=="go").loader().then(e=>{
+        e.language.tokenizer.root.splice(0,0,
+          [/\/\/\s*\!.*/, "custom-error"],
+          [/\/\/\s*\-.*/, "custom-negative"],
+          [/\/\/\s*\+.*/, "custom-success"],
+          [/\/\/\s*\=.*/, "custom-info"],
+          [/\/\/\s*\@.*/, "custom-success-info"],
+        )
+      })
+
+      monaco.editor.defineTheme("master-dark", {
+        base: "vs-dark",
+        inherit: true,
+        rules: [
+          { token: "custom-info",  foreground: "03A9F4", fontStyle: "bold underline" },
+          { token: "custom-negative", foreground: "FFFF00", fontStyle: "bold underline" },
+          { token: "custom-success", foreground: "00FF00", fontStyle: "bold underline" },
+          { token: "custom-success-info", foreground: "CCFF00", fontStyle: "bold underline" },
+          { token: "custom-error",  foreground: "ff0000", fontStyle: "bold underline" },
+        ],
+        colors: {}
+      });
+
+      monaco.editor.defineTheme("master-light", {
+        base: "vs",
+        inherit: true,
+        rules: [
+          { token: "custom-info", foreground: "1199FF", fontStyle: "bold underline" },
+          { token: "custom-negative", foreground: "AAAA00", fontStyle: "bold underline" },
+          { token: "custom-success", foreground: "00FF00", fontStyle: "bold underline" },
+          { token: "custom-success-info", foreground: "CCFF00", fontStyle: "bold underline" },
+          { token: "custom-error", foreground: "ff0000", fontStyle: "bold underline" },
+        ],
+        colors: {}
+      });
+      monaco.__customCommentsInstalled=true
+    }
+  });
+</script>
