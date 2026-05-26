@@ -2,14 +2,23 @@
 
 echo "===== System Resource Usage ====="
 
-# --- Internet Usage / Bandwidth ---
-echo "Internet Usage (per interface):"
+
+
+echo "Internet Speed (per interface):"
 for iface in $(ls /sys/class/net | grep -v lo); do
-    rx_bytes=$(cat /sys/class/net/$iface/statistics/rx_bytes)
-    tx_bytes=$(cat /sys/class/net/$iface/statistics/tx_bytes)
-    echo "$iface: RX $(($rx_bytes / 1024)) KB, TX $(($tx_bytes / 1024)) KB"
+    rx1=$(cat /sys/class/net/$iface/statistics/rx_bytes)
+    tx1=$(cat /sys/class/net/$iface/statistics/tx_bytes)
+
+    sleep 1
+
+    rx2=$(cat /sys/class/net/$iface/statistics/rx_bytes)
+    tx2=$(cat /sys/class/net/$iface/statistics/tx_bytes)
+
+    rx_rate=$(awk "BEGIN {printf \"%.2f\", ($rx2 - $rx1) * 8 / 1024 / 1024}")
+    tx_rate=$(awk "BEGIN {printf \"%.2f\", ($tx2 - $tx1) * 8 / 1024 / 1024}")
+
+    echo "$iface: RX ${rx_rate} Mbps, TX ${tx_rate} Mbps"
 done
-echo ""
 
 # --- CPU Usage / Max ---
 cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print 100 - $8"%"}')
