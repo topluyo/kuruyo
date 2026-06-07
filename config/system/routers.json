@@ -2,6 +2,8 @@
   "ip": "77.92.144.37",
   "http": 2086,
   "https": 0,
+  "cert":"/etc/letsencrypt/live/xxxxxx/cert.pem",
+  "priv":"/etc/letsencrypt/live/xxxxxx/privkey.pem",
   "healt": false,
   "log": "/web/.log/system.log",
   "routes": {
