@@ -352,6 +352,7 @@
       let tasks     = FileEditor.Helper.tasks = Helper.Tasks(Helper.Codes())
       let clasess   = Helper.Go.Classes(Helper.Codes())
       let globals   = FileEditor.Helper.globals = Helper.Go.GlobalVariables(Helper.Codes())
+      let locals    = FileEditor.Helper.locals  = Helper.Go.LocalVariables()
       let functions = Helper.Go.Functions(Helper.Codes())
 
       let fields    = FileEditor.Helper.fields = Helper.Go.Fields(Helper.Codes())
@@ -588,6 +589,14 @@ Helper.Codes = function(){
   return Object.fromEntries(Object.values(editors).map(e=>[e.path,e.getValue()] ))
 }
 
+Helper.Code = function(){
+  if(editor==null){
+    return {code:"",position:{line:0,column:0}}
+  }
+  const position = editor.getPosition();
+  return{ code:editor.getValue(), path: editor.path, position:{line:position.lineNumber,column:position.column}}
+}
+
 Helper.Go.Functions = function(codes){
   let response = [];
   for(let path in codes){
@@ -701,6 +710,87 @@ Helper.Go.GlobalVariables = function(codes){
   delete(response[""])
   return response;
 }
+
+
+
+Helper.Go.LocalVariables = function(){
+  const data = Helper.Code();
+  const code     = data.code;
+  const path     = data.path;
+  const position = data.position;
+  let line = position.line-1
+  const lines = code.split("\n");
+  let braceLevel = 0;  //. -1 <> +1
+  let response = {}
+  let skipBrace = null
+
+  let match
+  for(;line>0;line--){
+    let statement = lines[line]
+    //braceLevel += (statement.match(/\bselect\b/g) || []).length;
+    let minusBrace = (statement.match(/{/g) || []).length;
+    let plusBrace  = (statement.match(/}/g) || []).length;
+
+    if(braceLevel<0 && (plusBrace-minusBrace)>0){
+      skipBrace = Math.min(skipBrace,braceLevel)
+    }
+    braceLevel+= plusBrace-minusBrace
+    
+    if(braceLevel==skipBrace){
+      skipBrace=null
+    }
+
+    //if(statement.trim()!="") console.log(line,statement,braceLevel,skipBrace)
+
+    if(braceLevel<=0  && skipBrace==null){
+      
+      // var statement
+      let match = statement.match(/^\s*var\s+([a-zA-Z_][a-zA-Z0-9_]*(?:\s*,\s*[a-zA-Z_][a-zA-Z0-9_]*)*)\s+(\*?[a-zA-Z_][a-zA-Z0-9_]*)/);
+      if (match && !statement.trim().startsWith("for ")) {
+        let names = match[1];
+        let type = match[2];
+        names.split(",").map(e => e.trim()).forEach(e => {
+            response[e] = {name: e,type: type,path,line: line + 1};
+        });
+      }
+
+      //  := statement
+      match = statement.match(/([a-zA-Z_][a-zA-Z0-9_]*(?:\s*,\s*[a-zA-Z_][a-zA-Z0-9_]*)*)\s*:=\s*(.+)/);
+      if(match && !statement.trim().startsWith("for ")){
+        let name = match[1]
+        name.split(",").map(e=>e.trim()).map(e=>{
+          response[e] = {name: e, path,line:line+1}
+        })
+      }
+
+
+      // parametre ve yapı alımı
+      match = statement.match(/func\s*(?:\(([^)]+)\)\s*)?([a-zA-Z_]\w*)\s*\(([^)]*)\)/);
+      if(match){
+        let receiver = match[1]; // "c *Connection"
+        let params = match[3];    // "param string"
+        if (receiver) {
+          let [recvName, recvType] = receiver.split(/\s+/).filter(Boolean);
+          response[recvName] = {name: recvName, type: recvType,path,line: line + 1};
+        }
+        params.split(",").map(e=>e.trim()).filter(Boolean).map(e=>{
+          let p = e.split(/\s+/)
+          response[p[0]] = {name:p[0],type:p[1],path,line:line+1}
+        })
+      }
+    }
+    
+    if(statement.match(/\bcase\b|\bdefault\b/g)){
+      skipBrace = Math.min(skipBrace,braceLevel-1)
+    }
+  }
+  delete(response["_"])
+  return response
+}
+//console.clear()
+//Helper.Go.LocalVariables()
+
+
 
 
 Helper.Go.Classes = function(codes){
@@ -923,19 +1013,27 @@ require(['vs/editor/editor.main'], function () {
     let codes = Helper.Codes()
     let classes      = Helper.Go.Classes(codes)
     let functions    = Helper.Go.Functions(codes)
-    let variables    = Helper.Go.GlobalVariables(codes)
+    let globals    = Helper.Go.GlobalVariables(codes)
+    let locals     = Helper.Go.LocalVariables()
+    
     let parameters   = []
     //let parameters = detectGoCurrentFunctionParameters(text,range.startLineNumber-1)
+
+    locals = Object.keys(locals).map(e => ({
+      label: e, insertText: e,
+      range: range, kind: monaco.languages.CompletionItemKind.Variable, sortText : "2",
+    }))
 
     functions = Object.keys(functions).map(e => ({
       label: e, insertText: e ,  
       range: range, kind: monaco.languages.CompletionItemKind.Function, sortText : "3",
     }))
 
-    variables = Object.keys(variables).map(e => ({
+    globals = Object.keys(globals).map(e => ({
       label: e, insertText: e,
       range: range, kind: monaco.languages.CompletionItemKind.Variable, sortText : "2",
     }))
+
 
     /*
     parameters = parameters.map(e => ({
@@ -946,7 +1044,7 @@ require(['vs/editor/editor.main'], function () {
 
     classes = Object.keys(classes).map((e) => ({
       label: e, insertText: e,
-      range: range, kind: monaco.languages.CompletionItemKind.Field, sortText: "4",
+      range: range, kind: monaco.languages.CompletionItemKind.Struct, sortText: "4",
     }));
 
 
@@ -965,37 +1063,44 @@ require(['vs/editor/editor.main'], function () {
 
 
 
-    console.log([...functions, ...variables, ...parameters,...keywords])
-    return [...functions, ...variables, ...parameters,...keywords]
+    console.log([...functions, ...globals, ...locals, ...parameters,...classes,...keywords])
+    return [...functions, ...globals, ...locals, ...parameters,...classes,...keywords]
 
   }
 
 
 
+  function FixType(type){
+    if(type.trim().startsWith("*")){
+      return type.trim().substr(1)
+    }
+    return type
+  }
   
   monaco.languages.registerCompletionItemProvider('go', {
     triggerCharacters: ['.'],
     provideCompletionItems: function (model, position) {
-
+      
 
       const lineContent = model.getLineContent(position.lineNumber);
       const objectMatch = lineContent.slice(0, position.column - 1).match(/([a-zA-Z_][a-zA-Z0-9_]*)\.[a-zA-Z0-9_]*$/);
 
       if (objectMatch) {
         const objectName = objectMatch[1];
-        //! HERE WILL CONTINUE
-        console.log(objectName)
         if( FileEditor.Helper.globals[objectName] ){
-          let type    = FileEditor.Helper.globals[objectName].type
+          let type    = FixType(FileEditor.Helper.globals[objectName].type)
           let fields  = FileEditor.Helper.fields[type].fields
           let methods = Object.values(FileEditor.Helper.fields[type].methods)
-          
           fields  = fields.map(f=>({label:f.name,insertText:f.name,kind:monaco.languages.CompletionItemKind.Field,sortText:"4"}))
           methods = methods.map(f=>({label:f.name,insertText:f.name,kind:monaco.languages.CompletionItemKind.Function,sortText:"5"}))
-            
-
           return {suggestions:[...fields,...methods]}
-
+        }else if( FileEditor.Helper.locals[objectName] ){
+          let type    = FixType(FileEditor.Helper.locals[objectName].type)
+          let fields  = FileEditor.Helper.fields[type].fields
+          let methods = Object.values(FileEditor.Helper.fields[type].methods)
+          fields  = fields.map(f=>({label:f.name,insertText:f.name,kind:monaco.languages.CompletionItemKind.Field,sortText:"4"}))
+          methods = methods.map(f=>({label:f.name,insertText:f.name,kind:monaco.languages.CompletionItemKind.Function,sortText:"5"}))
+          return {suggestions:[...fields,...methods]}
         }else{
           return null
         }
@@ -1037,9 +1142,9 @@ require(['vs/editor/editor.main'], function () {
 
 <script>
   require(['vs/editor/editor.main'], function () { 
-    if(!monaco.__customCommentsInstalled){
+    if(!monaco.__customCommentsInstalled_X){
 
-      monaco.languages.getLanguages().find(e=>e.id=="javascript"||e.id=="php"||e.id=="go").loader().then(e=>{
+      monaco.languages.getLanguages().filter(e=>["javascript","php","go","css","html"].indexOf(e.id)>-1).map(e=>{e.loader().then(e=>{
         e.language.tokenizer.root.splice(0,0,
           [/\/\/\s*\!.*/, "custom-error"],
           [/\/\/\s*\-.*/, "custom-negative"],
@@ -1047,7 +1152,7 @@ require(['vs/editor/editor.main'], function () {
           [/\/\/\s*\=.*/, "custom-info"],
           [/\/\/\s*\@.*/, "custom-success-info"],
         )
-      })
+      })})
 
       monaco.editor.defineTheme("master-dark", {
         base: "vs-dark",
@@ -1074,7 +1179,7 @@ require(['vs/editor/editor.main'], function () {
         ],
         colors: {}
       });
-      monaco.__customCommentsInstalled=true
+      monaco.__customCommentsInstalled_X=true
     }
   });
 </script>
