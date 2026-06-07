@@ -37,7 +37,7 @@
       socket.binaryType = "arraybuffer";
       socket.onopen = () => {
         term.write("┌────────────────────────────────────────────────┐\r\n")
-        term.write('│           Conncected to terminal.              │\r\n');
+        term.write('│           Conneected to terminal.              │\r\n');
         term.write("└────────────────────────────────────────────────┘\r\n");
         if(start) socket.send( start + "\n" )
         start = "";
