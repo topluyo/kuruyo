@@ -71,22 +71,35 @@
       fitAddon.fit();
     });
 
+
+    
     window.addEventListener("keydown", async (e) => {
       // Detect Ctrl + Shift + C
       if (e.ctrlKey && e.shiftKey && e.code === "KeyC") {
         e.preventDefault();
-
         const selected = term.getSelection();
         if (selected) {
-          try {
-            await navigator.clipboard.writeText(selected);
-            console.log("Copied:", selected);
-          } catch (err) {
-            console.error("Clipboard error:", err);
-          }
+          await CopyText(selected);
         }
       }
     });
+
+    
+    async function CopyText(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+    }
+
 
 
 
