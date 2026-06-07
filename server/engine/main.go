@@ -28,9 +28,12 @@ import (
 import "golang.org/x/sys/unix"
 
 
+import "app/tslguard"
+
+
 var cfgPath string
 var cfgCert string
-var cfgKey string
+var cfgPriv string
 
 
 
@@ -45,6 +48,8 @@ type Server struct {
 	HTTPS          int                          `json:"https"`
 	Log            string                       `json:"log"`
 	Healt          bool                         `json:"healt"`
+	Cert           string                       `json:"cert"`
+	Priv           string                       `json:"priv"`
 	Domains        map[string]map[string]*Route
 	Levels         map[string]*Level            `json:"levels"`
 	Routes         map[string]*Route            `json:"routes"`
@@ -97,6 +102,8 @@ func load(path string){
 		log.Fatal("[x] config file: ",path," not readed")
 		return
 	}
+	cfgCert = server.Cert
+	cfgPriv = server.Priv
 }
 
 
@@ -699,9 +706,10 @@ func run(){
     }
 	}()
 
+	tslguard.Init()
 
 	// HTTPS listening
-	if cfgCert != "" && cfgKey != "" && server.HTTPS != 0 {
+	if cfgCert != "" && cfgPriv != "" && server.HTTPS != 0 {
 		httpsAddr := net.JoinHostPort("", strconv.Itoa(server.HTTPS))
 		srv2 := &http.Server{
 			Addr:         httpsAddr,
@@ -720,8 +728,10 @@ func run(){
 				if err != nil {
 					log.Fatalf("HTTPS reuseport error: %v", err)
 				}
+				//!STOPPED HERE
+				//ln = tslguard.WrapListener(ln)
 				log.Printf("HTTPS worker %d listening on %s", id, httpsAddr)
-				if err := srv2.ServeTLS(ln, cfgCert, cfgKey); err != nil && err != http.ErrServerClosed {
+				if err := srv2.ServeTLS(ln, cfgCert, cfgPriv); err != nil && err != http.ErrServerClosed {
 					write("https worker %d: %v", id, err)
 					row("HTTPS Cert ERROR")
 					write(center("make https:0 in router.json"))
@@ -781,7 +791,10 @@ func main(){
 
 	cfgPath    = argument("config")
 	cfgCert    = argument("cert", "/web/config/origin.pem")
-	cfgKey     = argument("key",  "/web/config/origin.key")
+	cfgPriv    = argument("key",  "/web/config/origin.key")
+
+	
+
 
 	if(cfgPath==""){
 		write("[X] config=XXXX parameter needed.")
@@ -1280,3 +1293,5 @@ func RateLimitStress() {
 	write(fmt.Sprintf("Approx RPS: %.0f", rps))
 }
 //----------------------------------------
+
+
