@@ -342,11 +342,11 @@ class Service{
 
         $exec = "echo 'ERROR'";
         if($lang=="go"){
-            $exec = "/program/go run . port={$port}";
+            $exec = "/program/go run . port={$port} base=\"{$base}\"";
             shell_exec("cd $path;/program/go mod init app > /dev/null 2>&1");
             shell_exec("cd $path;/program/go mod tidy > /dev/null 2>&1");
         }else if($lang=="node"){
-            $exec = "/program/node main.js port={$port}";
+            $exec = "/program/node main.js port={$port} base=\"{$base}\"";
             shell_exec("cd $path;npm install;");
         }else if($lang=="sh" || $lang=="bash"){
             $exec = "/bin/bash main.sh --port {$port}";
@@ -355,6 +355,11 @@ class Service{
         }else if($lang=="cdn"){
             $exec = "/program/go run main.go port={$port} root=\"{$path}\" base=\"{$base}\"";
             $workdir = "/web/server/programs/cdn";
+            shell_exec("cd $workdir;/program/go mod init app > /dev/null 2>&1");
+            shell_exec("cd $workdir;/program/go mod tidy > /dev/null 2>&1");
+        }else if($lang=="fcdn"){
+            $exec = "/program/go run main.go port={$port} root=\"{$path}\" base=\"{$base}\"";
+            $workdir = "/web/server/programs/fcdn";
             shell_exec("cd $workdir;/program/go mod init app > /dev/null 2>&1");
             shell_exec("cd $workdir;/program/go mod tidy > /dev/null 2>&1");
         }else if($lang=="static"){
@@ -470,13 +475,16 @@ SERVICE;
         }
         $name = $info["service"];
         logc("[.] Stopping $name");
-        exec("sudo systemctl stop $name > /dev/null 2>&1");
+        exec("systemctl stop $name > /dev/null 2>&1");
         logc("[.] Disabling $name");
-        exec("sudo systemctl disable $name > /dev/null 2>&1");
+        exec("systemctl disable $name > /dev/null 2>&1");
         $file = SYSTEMD."$name";
         if (is_file($file)) {
             unlink($file); // dosyayı sil
             logc("[+] Removed $name", "frontGreen" );
+        }
+        if($pid){
+            exec("kill -9 ".$pid);
         }
     }
 
