@@ -14,3 +14,6 @@ ln -sf  /usr/local/bin/npm /program/npm
 ln -sf  /usr/local/bin/npx /program/npx
 ln -sf  /usr/local/go/bin/go /program/go
 ln -sf  /usr/bin/php8.2 /program/php
+
+
+ln -sf  /program /app
