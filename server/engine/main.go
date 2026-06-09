@@ -142,6 +142,9 @@ func ranges(s string) []string {
 
 //@ Check is Backend UP
 func (r *Route) HealthChecker() {
+	if(server.Healt==false){
+		return
+	}
 	n := len(r.Backends)
 	r.backendUp = make([]bool, n)
 	checkOnce := func(idx int) bool {
@@ -153,6 +156,8 @@ func (r *Route) HealthChecker() {
 			Timeout:   3 * time.Second,
 		}
 		req, _ := http.NewRequestWithContext(context.Background(), "HEAD", checkURL.String(), nil)
+		req.Header.Set("Host-Path", UrlPath(r.Name))
+
 		resp, err := client.Do(req)
 		if err != nil {
 			return false
