@@ -1,7 +1,7 @@
 package main
 
 import (
-	"io"
+	//"io"
 	"log"
 	"mime"
 	"net/http"
@@ -16,8 +16,8 @@ import (
 
 // ---------- MAIN ----------
 func main() {
-	
-	row("CDN SERVER")
+
+	table("BASIC HTTP")
 
 	PORT := argument("port")
 	ROOT := argument("root")
@@ -34,34 +34,60 @@ func main() {
 	if( !strings.HasPrefix(BASE,"/") ){
 		BASE = "/" + BASE
 	}
-
 	
+	row("CDN SERVER")
 	write("├─── PORT: ", PORT);
 	write("├─── ROOT: ", ROOT);
 	write("├─── BASE: ", BASE);
+	
+	
 
 
 	ROOT = filepath.Clean(ROOT)
-
+	
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-
-		reqPath := filepath.Clean(r.URL.Path)
-		reqPath  = strings.TrimPrefix(reqPath, BASE)
+		reqPath := filepath.Clean("/" + r.URL.Path)
+		reqPath = strings.TrimPrefix(reqPath, BASE)
 		filePath := filepath.Join(ROOT, reqPath)
 
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, private")
+		w.Header().Set("Pragma", "no-cache")
+
+		write(reqPath)
+
+		// Path traversal koruması
+		if !strings.HasPrefix(filePath, ROOT) {
+			http.NotFound(w, r)
+			return
+		}
+
 		info, err := os.Stat(filePath)
-		if err != nil || info.IsDir() {
-				send404(w, r)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		// Eğer dizinse → index.html ekle
+		if info.IsDir() {
+			indexPath := filepath.Join(filePath, "index.html")
+
+			indexInfo, err := os.Stat(indexPath)
+			if err != nil {
+				http.NotFound(w, r)
 				return
+			}
+
+			filePath = indexPath
+			info = indexInfo
 		}
 
 		file, err := os.Open(filePath)
 		if err != nil {
-			http.Error(w, "File open error", 500)
+			http.NotFound(w, r)
 			return
 		}
 		defer file.Close()
-
+		
 		// ---------- MIME ----------
 		ext := filepath.Ext(filePath)
 		mimeType := mime.TypeByExtension(ext)
@@ -69,6 +95,12 @@ func main() {
 			mimeType = "application/octet-stream"
 		}
 
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Range, Content-Type")
+		w.Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges")
+
+		
 		// ---------- HEADERS (MAX CACHE) ----------
 		w.Header().Set("Content-Type", mimeType)
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
@@ -78,28 +110,24 @@ func main() {
 		// ETag kapat (immutable dosya için gereksiz)
 		w.Header().Del("ETag")
 
-		w.WriteHeader(http.StatusOK)
-		io.Copy(w, file)
+
+		// OPTIONS preflight isteğini yakala
+		if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+		}
+
+
+		http.ServeContent(w, r, info.Name(), info.ModTime(), file)
 	})
 
-	log.Println("CDN Server running on :" + PORT)
-	log.Println("Root:", ROOT)
+
+
+
+	write("CDN Server running on :" + PORT)
+	write("Root:", ROOT)
 	log.Fatal(http.ListenAndServe(":"+PORT, nil))
 }
-
-
-func send404(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
-    w.Header().Set("Pragma", "no-cache")
-    w.Header().Set("Expires", "0")
-    w.WriteHeader(http.StatusNotFound)
-    w.Write([]byte("404 Not Found"))
-}
-
-
-
-
-
 
 
 
@@ -163,4 +191,7 @@ func ToNumber(number string) int {
 	if err != nil { return 0 }
 	return num
 }
+
+
+
 
