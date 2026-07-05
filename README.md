@@ -9,13 +9,13 @@ apt update
 apt install curl unzip
 curl -L -o kuruyo.zip https://github.com/topluyo/kuruyo/archive/refs/heads/master.zip
 unzip kuruyo.zip
-mv kuruyo-main/ /web
+mv kuruyo-master/ /web
 rm kuruyo.zip
 ```
 
 ---
 
-## � Dil Seçimi / Language Selection
+## 🌐 Dil Seçimi / Language Selection
 
 | 🇹🇷 [Türkçe](#-türkçe-dokümantasyon) | 🇬🇧 [English](#-english-documentation) |
 |:-----------------------------------:|:---------------------------------------:|
@@ -36,7 +36,7 @@ rm kuruyo.zip
 
 ---
 
-## �🇹🇷 Türkçe Dokümantasyon
+## 🇹🇷 Türkçe Dokümantasyon
 
 ### 📋 Genel Bakış
 
