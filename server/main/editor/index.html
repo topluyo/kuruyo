@@ -42,6 +42,13 @@
       fill:#09F;
     }
 
+    .FileEditor-TreeView-Title > [over]{
+      visibility:hidden;
+    }
+    .FileEditor-TreeView-Title:hover > [over]{
+      visibility:visible;
+    }
+
     .FileEditor-TreeView-Title-Opened{
       background:#8881;
     }
@@ -170,6 +177,7 @@
       "file": documenter.render(`<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h287q16 0 30.5 6t25.5 17l194 194q11 11 17 25.5t6 30.5v447q0 33-23.5 56.5T720-80H240Zm280-560v-160H240v640h480v-440H560q-17 0-28.5-11.5T520-640ZM240-800v200-200 640-640Z"/></svg>`),
       "plusFolder": documenter.render(`<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M560-320h80v-80h80v-80h-80v-80h-80v80h-80v80h80v80ZM160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h240l80 80h320q33 0 56.5 23.5T880-640v400q0 33-23.5 56.5T800-160H160Zm0-80h640v-400H447l-80-80H160v480Zm0 0v-480 480Z"/></svg>`),
       "plusFile": documenter.render(`<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M440-240h80v-120h120v-80H520v-120h-80v120H320v80h120v120ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v480q0 33-23.5 56.5T720-80H240Zm280-520v-200H240v640h480v-440H520ZM240-800v200-200 640-640Z"/></svg>`),
+      "delete": documenter.render(`<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#F40"><path d="M280-120q-33 0-56.5-23.5T200-200v-520q-17 0-28.5-11.5T160-760q0-17 11.5-28.5T200-800h160q0-17 11.5-28.5T400-840h160q17 0 28.5 11.5T600-800h160q17 0 28.5 11.5T800-760q0 17-11.5 28.5T760-720v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520Zm-400 0v520-520Zm200 316 76 76q11 11 28 11t28-11q11-11 11-28t-11-28l-76-76 76-76q11-11 11-28t-11-28q-11-11-28-11t-28 11l-76 76-76-76q-11-11-28-11t-28 11q-11 11-11 28t11 28l76 76-76 76q-11 11-11 28t11 28q11 11 28 11t28-11l76-76Z"/></svg>`)
     }
 
     FileEditor.TreeView.Render.Item = function(data,depth=0){
@@ -178,7 +186,7 @@
 
       let title = document.createElement("div")
       title.classList.add("flex-x","center","FileEditor-TreeView-Title")
-      if(data.type=="file") title.classList.add("hover")
+      //if(data.type=="file") title.classList.add("hover")
       title.setAttribute("type",data.type)
       title.setAttribute("path",data.path)
       title.setAttribute("ext",data.path.split(".").pop())
@@ -194,23 +202,44 @@
       
       let text   = document.createElement("div")
       text.classList.add("space")
+      if(data.type=="file") text.classList.add("hover")
       text.textContent = data.name
       title.appendChild(text)
 
 
-      /*
+      let deleteItem = document.createElement("div")
+      deleteItem.appendChild(FileEditor.TreeView.Icons.delete.cloneNode(true))
+      deleteItem.setAttribute("over","")
+      title.appendChild(deleteItem)
+      deleteItem.onclick = function(){
+        if(confirm(data.path+" -> delete file?")){
+          documenter.post(FileEditor.base(),{"rm":data.path}).then(e=>e.text()).then(e=>{})
+        }
+      }
+
       if(data.type=="dir"){
         let plusFolder = document.createElement("div")
         plusFolder.appendChild(FileEditor.TreeView.Icons.plusFolder.cloneNode(true))
         plusFolder.setAttribute("over","")
         title.appendChild(plusFolder)
+        plusFolder.onclick = function(){
+          let name = prompt("folder name","")
+          if(name.trim()!=""){
+            documenter.post(FileEditor.base(),{"mkdir":data.path+"/"+name}).then(e=>e.text()).then(e=>{})
+          }
+        }
 
         let plusFile = document.createElement("div")
         plusFile.appendChild(FileEditor.TreeView.Icons.plusFile.cloneNode(true))
         plusFile.setAttribute("over","")
         title.appendChild(plusFile)
+        plusFile.onclick = function(){
+          let name = prompt("file name","")
+          if(name.trim()!=""){
+            documenter.post(FileEditor.base(),{"touch":data.path+"/"+name}).then(e=>e.text()).then(e=>{})
+          }
+        }
       }
-      */
       
 
       
@@ -590,7 +619,7 @@ Helper.Codes = function(){
 }
 
 Helper.Code = function(){
-  if(editor==null){
+  if(window.editor==null){
     return {code:"",position:{line:0,column:0}}
   }
   const position = editor.getPosition();
