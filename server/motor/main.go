@@ -644,6 +644,8 @@ func run(){
 			log.Printf("HTTPS not started: provide -tls-cert and -tls-key to enable TLS on port %d", server.HTTPS)
 		}
 	}
+
+	select {}
 }
 
 
@@ -684,8 +686,16 @@ func ListenReusePort(network, address string) (net.Listener, error) {
 
 //@ 4. ready
 func ready(){
-	exec.Command("bash", "-c", "ufw allow " + ToString(server.HTTP)).Output()
-	exec.Command("bash", "-c", "ufw allow " + ToString(server.HTTPS)).Output()
-	exec.Command("bash", "-c", "fuser -k " + ToString(server.HTTP) + "/tcp").Output()
-	exec.Command("bash", "-c", "fuser -k " + ToString(server.HTTPS) + "/tcp").Output()
+	if(server.HTTP>0) {
+		exec.Command("bash", "-c", "ufw allow " + ToString(server.HTTP)).Output()
+	}
+	if(server.HTTPS>0) {
+		exec.Command("bash", "-c", "ufw allow " + ToString(server.HTTPS)).Output()
+	}
+	if(server.HTTP>0) {
+		exec.Command("bash", "-c", "fuser -k " + ToString(server.HTTP) + "/tcp").Output()
+	}
+	if(server.HTTPS>0) {
+		exec.Command("bash", "-c", "fuser -k " + ToString(server.HTTPS) + "/tcp").Output()
+	}
 }
