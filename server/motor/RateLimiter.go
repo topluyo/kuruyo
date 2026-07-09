@@ -87,33 +87,35 @@ func DefineRateLimit(){
 
 	for key, level := range server.Levels {
 		rate := level.Rates
+		if(rate!=""){
 
-    write("├─── RateLimit : " + key)
+			write("├─── RateLimit : " + key)
 
-    RateParams := strings.Split(rate, " ")
-    if len(RateParams) < 3 {
-      write("[X] Rate parameters error on \"" + rate + "\"")
-      continue
-    }
+			RateParams := strings.Split(rate, " ")
+			if len(RateParams) < 3 {
+				write("[X] Rate parameters error on \"" + rate + "\"")
+				continue
+			}
 
-    request := ToNumber(RateParams[0])
-    second  := ToNumber(RateParams[1])
-    wait    := ToNumber(RateParams[2])
-    
-    
-    limit   :=  &Limit{
-      Info     : rate,
-      Request  : uint16(request),
-      Period   : uint32(second),
-      Wait     : uint32(wait),
-      Connects : make([]uint32, 1<<RATE_BITS),
-    }
-    DefineWindow(limit)
+			request := ToNumber(RateParams[0])
+			second  := ToNumber(RateParams[1])
+			wait    := ToNumber(RateParams[2])
+			
+			
+			limit   :=  &Limit{
+				Info     : rate,
+				Request  : uint16(request),
+				Period   : uint32(second),
+				Wait     : uint32(wait),
+				Connects : make([]uint32, 1<<RATE_BITS),
+			}
+			DefineWindow(limit)
 
-    newLimiter[key] = limit
+			newLimiter[key] = limit
 
-    write("   └──", ToString(request)+"r", ToString(second)+"s", ToString(wait)+"w")
-  
+			write("   └──", ToString(request)+"r", ToString(second)+"s", ToString(wait)+"w")
+		
+		}
   
 	}
 
