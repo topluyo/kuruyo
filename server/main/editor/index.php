@@ -40,7 +40,29 @@ if($PAGE=="api"){
     echo file_put_contents($_POST["save"], base64_decode($_POST["data"]));
   }
 
+  if(@$_POST["mkdir"]){
+    $path = $_POST["mkdir"];
+    header('Content-Type: text/plain; charset=UTF-8');
+    if (!is_dir($path) && !mkdir($path, 0775, true)) {
+      exit('"error"');
+    }
+    echo "success";
+  }
 
+  
+  if(@$_POST["rm"]){
+    $path = $_POST["rm"];
+    header('Content-Type: text/plain; charset=UTF-8');
+    exec("rm -rf \"".addslashes($path)."\"");
+    echo "success";
+  }
+
+  if(@$_POST["touch"]){
+    $path = $_POST["touch"];
+    header('Content-Type: text/plain; charset=UTF-8');
+    exec("touch \"".addslashes($path)."\"");
+    echo "success";
+  }
 }else{
   return require "index.html";
 }
