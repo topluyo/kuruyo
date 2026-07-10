@@ -589,10 +589,18 @@ SERVICE;
         $file   = NAME;
         $config = FILE;
         
+        $configiration = json_decode(file_get_contents($config), true);
+        if(!array_key_exists("engine",$configiration)){
+            logc("[X] \"engine\" parameter not found in $config","backRed");
+            exit;
+        }
+        $engine = $configiration["engine"];
+        
         $user = "root";
         $serviceName = "kuruyo-{$file}.service";
         $servicePath = $SYSTEMD . $serviceName;
-        $workdir = "/web/server/engine/";
+        
+        $workdir = "/web/server/$engine/";
             // ---------- SERVİS DOSYASI ÜRET ----------
 $service = <<<SERVICE
 [Unit]
@@ -601,7 +609,7 @@ After=network.target
 
 [Service]
 ExecReload=/usr/bin/systemctl kill -s SIGUSR1 $serviceName
-ExecStart=/usr/local/go/bin/go run main.go config="$config"
+ExecStart=/usr/local/go/bin/go run . config="$config"
 Restart=always
 User=$user
 WorkingDirectory=$workdir
