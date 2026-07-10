@@ -11,30 +11,47 @@ import(
 var RATE_BITS int = 25
 
 //- BLOCKS : uint32
+
 const (
-  RATE_SIZE_OPEN     = 12
-  RATE_SIZE_WINDOW   = 11
-  RATE_SIZE_REQUEST  = 8
-  RATE_SIZE_BLOCKED  = 1
+  RATE_SIZE_REQUEST uint32 = 8
+  RATE_SIZE_OPEN    uint32 = 12
+  RATE_SIZE_WINDOW  uint32 = 11
+  RATE_SIZE_BLOCKED uint32 = 1
 )
 
+const(
+  RATE_OFFSET_REQUEST uint32 = 0
+  RATE_OFFSET_OPEN    uint32 = RATE_OFFSET_REQUEST + RATE_SIZE_REQUEST
+  RATE_OFFSET_WINDOW  uint32 = RATE_OFFSET_OPEN    + RATE_SIZE_OPEN
+  RATE_OFFSET_BLOCKED uint32 = RATE_OFFSET_WINDOW  + RATE_SIZE_WINDOW
+)
 
 
 const(
-  RATE_OFFSET_OPEN     = 0
-  RATE_OFFSET_WINDOW   = RATE_OFFSET_OPEN    + RATE_SIZE_OPEN
-  RATE_OFFSET_REQUEST  = RATE_OFFSET_WINDOW  + RATE_SIZE_WINDOW
-  RATE_OFFSET_BLOCKED  = RATE_OFFSET_REQUEST + RATE_SIZE_REQUEST
+  VALUE_MASK_REQUEST uint32 = (1 << RATE_SIZE_REQUEST) - 1
+  VALUE_MASK_OPEN    uint32 = (1 << RATE_SIZE_OPEN) - 1
+  VALUE_MASK_WINDOW  uint32 = (1 << RATE_SIZE_WINDOW) - 1
+  VALUE_MASK_BLOCKED uint32 = (1 << RATE_SIZE_BLOCKED) - 1
+)
 
-  MASK_OPEN    = (1 << RATE_SIZE_OPEN) - 1
-  HALF_OPEN      = 1 << (RATE_SIZE_OPEN - 1)
-  MASK_WINDOW  = (1 << RATE_SIZE_WINDOW) - 1
-  MASK_REQUEST = (1 << RATE_SIZE_REQUEST) - 1
-  MASK_BLOCKED = (1 << RATE_SIZE_BLOCKED) - 1
+const (
+	AREA_MASK_REQUEST  uint32 = VALUE_MASK_REQUEST << RATE_OFFSET_REQUEST
+	AREA_MASK_OPEN     uint32 = VALUE_MASK_OPEN    << RATE_OFFSET_OPEN
+	AREA_MASK_WINDOW   uint32 = VALUE_MASK_WINDOW  << RATE_OFFSET_WINDOW
+	AREA_MASK_BLOCKED  uint32 = VALUE_MASK_BLOCKED << RATE_OFFSET_BLOCKED
+
+
+	NOT_AREA_MASK_REQUEST  uint32 = ^AREA_MASK_REQUEST
+	NOT_AREA_MASK_OPEN     uint32 = ^AREA_MASK_OPEN
+	NOT_AREA_MASK_WINDOW   uint32 = ^AREA_MASK_WINDOW
+	NOT_AREA_MASK_BLOCKED  uint32 = ^AREA_MASK_BLOCKED
+)
+const(
+  HALF_OPEN uint32 = 1 << (RATE_SIZE_OPEN - 1)
 )
 
 
-func CoolDownPassed(now, open uint16, mask, half uint16) bool {
+func CoolDownPassed(now, open uint32, mask, half uint32) bool {
   d := (now - open) & mask
   return d != 0 && d < half
 }
@@ -42,7 +59,7 @@ func CoolDownPassed(now, open uint16, mask, half uint16) bool {
 //@ Limit
 type Limit struct{
   Info      string
-	Request   uint16
+	Request   uint32
   Period    uint32
   Wait      uint32
   
@@ -104,10 +121,10 @@ func DefineRateLimit(){
 			
 			limit   :=  &Limit{
 				Info     : rate,
-				Request  : uint16(request),
+				Request  : uint32(request),
 				Period   : uint32(second),
 				Wait     : uint32(wait),
-				Connects : make([]uint32, 1<<RATE_BITS),
+				Connects : make([]uint32, 1<<RATE_BITS,1<<RATE_BITS),
 			}
 			DefineWindow(limit)
 
@@ -133,6 +150,8 @@ func DefineRateLimit(){
 	}
 
 	Limiter.Store(&RateLimiter{ limits: newLimiter})
+
+	//RateLimiterChecker()
 
 }
 
@@ -189,79 +208,75 @@ func Rate_IPSET(ip string) uint64 {
 
 
 
-func GetRateConnect(index uint64, limit *Limit) (open uint16, window uint16, request uint16, blocked uint16, currentWindow uint16, currentOpen uint16) {
-	value := atomic.LoadUint32(&limit.Connects[index])
-	open = uint16(value & MASK_OPEN)
-  window = uint16((value >> RATE_OFFSET_WINDOW) & MASK_WINDOW)
-  request = uint16((value >> RATE_OFFSET_REQUEST) & MASK_REQUEST)
-  blocked = uint16((value >> RATE_OFFSET_BLOCKED) & MASK_BLOCKED)
+/*
+func GetRateConnect(index uint64, limit *Limit) (open uint16,window uint16,request uint16,blocked uint16,currentWindow uint16,currentOpen uint16,) {
+	value    := atomic.LoadUint32(&limit.Connects[index])
+	request   = uint16( value & VALUE_MASK_REQUEST )
+	open      = uint16( (value >> RATE_OFFSET_OPEN) & VALUE_MASK_OPEN )
+	window    = uint16( (value >> RATE_OFFSET_WINDOW) & VALUE_MASK_WINDOW )
+	blocked   = uint16( (value >> RATE_OFFSET_BLOCKED) & VALUE_MASK_BLOCKED )
 
-	currentWindow = uint16(limit.Window.Load() & MASK_WINDOW)
-	currentOpen   = uint16(limit.Open.Load() & MASK_OPEN)
+	currentWindow = uint16(limit.Window.Load() & VALUE_MASK_WINDOW)
+	currentOpen   = uint16(limit.Open.Load() & VALUE_MASK_OPEN)
+
 	return
 }
 
 
-func SetRateConnect(index uint64, limit *Limit, open, window, request, blocked uint16) {
-  value := uint32(open&MASK_OPEN) |
-    (uint32(window&MASK_WINDOW) << RATE_OFFSET_WINDOW) |
-    (uint32(request&MASK_REQUEST) << RATE_OFFSET_REQUEST) |
-    (uint32(blocked&MASK_BLOCKED) << RATE_OFFSET_BLOCKED)
-	atomic.StoreUint32(&limit.Connects[index], value)
+func PackRateConnect(open,window,request,block uint32,) uint32 {
+	return uint32(request&VALUE_MASK_REQUEST) |
+		(uint32(open&VALUE_MASK_OPEN) << RATE_OFFSET_OPEN) |
+		(uint32(window&VALUE_MASK_WINDOW) << RATE_OFFSET_WINDOW) |
+		(uint32(block&VALUE_MASK_BLOCKED) << RATE_OFFSET_BLOCKED)
 }
+*/
 
-func PackRateConnect(open, window, request, blocked uint16) uint32 {
-	return uint32(open&MASK_OPEN) |
-    (uint32(window&MASK_WINDOW) << RATE_OFFSET_WINDOW) |
-    (uint32(request&MASK_REQUEST) << RATE_OFFSET_REQUEST) |
-    (uint32(blocked&MASK_BLOCKED) << RATE_OFFSET_BLOCKED)
-}
+func UpdateRateConnect(index uint64, limit *Limit, currentWindow uint32, currentOpen uint32, maxRequest uint32) bool {
 
-func UpdateRateConnect(index uint64, limit *Limit, currentWindow uint16, currentOpen uint16, maxRequest uint16) bool {
-
-	for {
-		old := atomic.LoadUint32(&limit.Connects[index])
+	old := atomic.AddUint32(&limit.Connects[index], 1)
 
 
-    open    := uint16(old & MASK_OPEN)
-    window  := uint16((old >> RATE_OFFSET_WINDOW) & MASK_WINDOW)
-    request := uint16((old >> RATE_OFFSET_REQUEST) & MASK_REQUEST)
-    blocked := uint16((old >> RATE_OFFSET_BLOCKED) & MASK_BLOCKED)
+	request   := old & VALUE_MASK_REQUEST 
+	open      := (old >> RATE_OFFSET_OPEN) & VALUE_MASK_OPEN 
+	window    := (old >> RATE_OFFSET_WINDOW) & VALUE_MASK_WINDOW 
+	blocked   := (old >> RATE_OFFSET_BLOCKED) & VALUE_MASK_BLOCKED 
 
+	//write(request,open,window,blocked,currentWindow,currentOpen,maxRequest)
 
-		if blocked == 1 {
-			if !CoolDownPassed(currentOpen, open, MASK_OPEN, HALF_OPEN) {
-				return false
-			}
-			blocked = 0
-			request = 0
-			window = currentWindow
+	if blocked == 1 {
+		if !CoolDownPassed(currentOpen, open, VALUE_MASK_OPEN, HALF_OPEN) {
+			return false
 		}
-
-
-		if window != currentWindow {
-			window = currentWindow
-			request = 0
-		}
-
-
-		if request >= maxRequest {
-			blocked   = 1
-      open = (currentOpen + 1) & MASK_OPEN
-			newValue := PackRateConnect(open,window,request,blocked)
-			if atomic.CompareAndSwapUint32(&limit.Connects[index],old,newValue) {
-				return false
-			}
-
-			continue
-		}
-
-		request++
-		newValue := PackRateConnect(open,window,request,blocked)
-		if atomic.CompareAndSwapUint32(&limit.Connects[index],old,newValue) {
-			return true
-		}
+		// request=1, open=0, window=0, blocked=0
+		atomic.StoreUint32(&limit.Connects[index], 1)
+		return true
 	}
+
+
+	if window != currentWindow {
+		// request=1
+		atomic.AndUint32(&limit.Connects[index], NOT_AREA_MASK_REQUEST)
+		atomic.OrUint32(&limit.Connects[index], 1)
+		// window=currentWindow
+		atomic.AndUint32(&limit.Connects[index], NOT_AREA_MASK_WINDOW)
+		atomic.OrUint32(&limit.Connects[index], AREA_MASK_WINDOW & (currentWindow << RATE_OFFSET_WINDOW ))
+		return true
+	}
+
+
+	if request > maxRequest {
+		// blocked=1
+		atomic.OrUint32(&limit.Connects[index], AREA_MASK_BLOCKED)
+		// open=currentOpen+1
+		open = ((currentOpen + 1) & VALUE_MASK_OPEN) << RATE_OFFSET_OPEN
+
+		atomic.AndUint32(&limit.Connects[index], NOT_AREA_MASK_OPEN)
+		atomic.OrUint32(&limit.Connects[index], open )
+		
+		return false
+	}
+
+	return true
 }
 
 func CheckRateLimiter(ip string, limits []*Limit) bool {
@@ -269,8 +284,8 @@ func CheckRateLimiter(ip string, limits []*Limit) bool {
 	ipset := Rate_IPSET(ip)
 
 	for _, limit := range limits {
-		currentWindow := uint16(limit.Window.Load() & MASK_WINDOW)
-		currentOpen   := uint16(limit.Open.Load()   & MASK_OPEN)
+		currentWindow := limit.Window.Load() & VALUE_MASK_WINDOW
+		currentOpen   := limit.Open.Load()   & VALUE_MASK_OPEN
 		if !UpdateRateConnect(ipset,limit,currentWindow,currentOpen,limit.Request) {
 			return false
 		}
