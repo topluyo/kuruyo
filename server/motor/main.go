@@ -645,7 +645,6 @@ func run(){
 		}
 	}
 
-	select {}
 }
 
 
