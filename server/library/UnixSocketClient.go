@@ -7,13 +7,11 @@ import (
 
 /*
 	UnixSocketClient: Otomatik reconnect destekli Unix Socket Client
-
-	USAGE:
-
+  USAGE:
+  
+  var client *UnixSocketClient
 	client := UnixSocketClientInit("/web/sockets/21600-LOG.sock")
-
 	response := client.Request("UserCount")
-
 	client.Close()
 */
 
@@ -27,9 +25,7 @@ func UnixSocketClientInit(socketPath string) *UnixSocketClient {
 	c := &UnixSocketClient{
 		socketPath: socketPath,
 	}
-
 	_ = c.reconnect()
-
 	return c
 }
 
