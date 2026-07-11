@@ -5,6 +5,7 @@ import(
 	"net"
 	"bufio"
 	"strings"
+  "time"
 )
 
 /*
@@ -13,13 +14,13 @@ import(
 
 	for test:
 	___________________________
-	printf 'HELLO\0' | socat - UNIX-CONNECT:/tmp/socket.sock
+	printf 'UserCount\0' | socat - UNIX-CONNECT:/web/sockets/SOCKET.sock 
 	
 	Usage:
 	___________________________
 	go UnixSocketServer("/web/sockets/"+PORT+"-LOG.sock", func(request string) string {
 		if(request=="UserCount"){
-			return ToString( "1" )
+			return "1"
 		}
 		return "NOT FOUND ACTION"
 	})
@@ -27,43 +28,45 @@ import(
 */
 func UnixSocketServer(socketPath string, callback func(string) string) {
 	
-	fmt.Println("Initing",socketPath)
+	
 	if _, err := os.Stat(socketPath); err == nil {
 		os.Remove(socketPath)
 	}
 
 	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
-		fmt.Println("UnixSocketServer:: Listen error:", err)
+		fmt.Println("[X] UnixSocketServer:: Listen error:", err)
 	}
+	fmt.Println("[+] Initing",socketPath)
 	defer listener.Close()
 
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Println("UnixSocketServer:: Accept error:", err)
+			fmt.Println("[X] UnixSocketServer:: Accept error:", err)
 			continue
 		}
 
 		go func(conn net.Conn) {
-			defer conn.Close()
-			reader := bufio.NewReader(conn)
-			for {
-				message, err := reader.ReadString('\x00')
-				if err != nil {
-					return
-				}
-				message = strings.TrimSuffix(message,"\x00")
-
-				response := callback(message)
-				_, err = conn.Write([]byte(response))
-				if err != nil {
-					fmt.Println("UnixSocketServer:: Yazma hatası:", err)
-					return
-				}
-			}
+		    defer conn.Close()
+		    conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+		    reader := bufio.NewReader(conn)
+		    for {
+		        message, err := reader.ReadString('\x00')
+		        if err != nil {
+		            return
+		        }
+		        message = strings.TrimSuffix(message, "\x00")
+		        response := callback(message)
+		        _, err = conn.Write([]byte(response))
+		        if err != nil {
+		            fmt.Println("[X] UnixSocketServer:: Write error:", err)
+		            return
+		        }
+		        conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+		    }
 		}(conn)
+		
 	}
 }
-//-----------------------------------------------------------------
