@@ -23,6 +23,21 @@ func argument(key string, defaults ...string) string {
 	return ""
 }
 
+func arguments(code string,key string,defaults ...string) string{
+	response := ""
+	for _, arg := range strings.Split(code," ") {
+		if strings.HasPrefix(arg, key+"=") {
+			response = strings.SplitN(arg, "=", 2)[1]
+			response = strings.Trim(response, "\"")
+			return response
+		}
+	}
+	if len(defaults) > 0 {
+		return defaults[0]
+	}
+	return ""
+}
+
 func enviroment(a string) string{
 	return os.Getenv(a)
 }
