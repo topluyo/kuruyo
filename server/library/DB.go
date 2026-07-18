@@ -15,6 +15,7 @@ import(
   "database/sql"
   "log"
   "time"
+	"bytes"
   _ "github.com/go-sql-driver/mysql"
 )
 
@@ -60,6 +61,10 @@ func (db *DB) SelectInts(query string, args ...interface{}) []int {
 
 func (db *DB) SelectStrings(query string, args ...interface{}) []string {
 	return SelectStringsDB(db.db, query, args...)
+}
+
+func (db *DB) SelectCSV(query string, args ...interface{}) string {
+	return SelectCSVDB(db.db, query, args...)
 }
 
 func (db *DB) Close() error {
@@ -229,4 +234,94 @@ func SelectStringsDB(db *sql.DB, query string, args ...interface{}) []string {
 	}
 
 	return values
+}
+
+
+
+func appendEncoded(b *bytes.Buffer, data []byte) {
+	start := 0
+
+	for i, c := range data {
+
+		switch c {
+
+		case '\\':
+			if start != i {
+				b.Write(data[start:i])
+			}
+			b.WriteString(`\\`)
+			start = i + 1
+
+		case ',':
+			if start != i {
+				b.Write(data[start:i])
+			}
+			b.WriteString(`\,`)
+			start = i + 1
+
+		case '\n':
+			if start != i {
+				b.Write(data[start:i])
+			}
+			b.WriteString(`\n`)
+			start = i + 1
+
+		case '\r':
+			if start != i {
+				b.Write(data[start:i])
+			}
+			b.WriteString(`\r`)
+			start = i + 1
+		}
+	}
+
+	if start != len(data) {
+		b.Write(data[start:])
+	}
+}
+
+func SelectCSVDB(db *sql.DB, query string, params ...any) string {
+	rows, err := db.Query(query, params...)
+	if err != nil {
+		write("ERROR ON", query, params)
+		return ""
+	}
+	defer rows.Close()
+	cols, err := rows.Columns()
+	if err != nil {
+		write("ERROR ON", query, params)
+		return ""
+	}
+	values := make([]sql.RawBytes, len(cols))
+	scanArgs := make([]any, len(cols))
+	for i := range values {
+		scanArgs[i] = &values[i]
+	}
+	var buf bytes.Buffer
+	buf.Grow(16 * 1024)
+	// Header
+	for i, col := range cols {
+		if i != 0 {
+			buf.WriteByte(',')
+		}
+		appendEncoded(&buf, []byte(col))
+	}
+	for rows.Next() {
+		if err := rows.Scan(scanArgs...); err != nil {
+			return ""
+		}
+		buf.WriteByte('\n')
+		for i, v := range values {
+			if i != 0 {
+				buf.WriteByte(',')
+			}
+			if v != nil {
+				appendEncoded(&buf, v)
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return ""
+	}
+	return buf.String()
 }
