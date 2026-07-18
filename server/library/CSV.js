@@ -1,5 +1,3 @@
-
-
 function TextToCsv(data) {
 	const rows = [];
 	let row = [];
@@ -43,6 +41,10 @@ function TextToCsv(data) {
 				field = "";
 				continue;
 			}
+      // Windows (\r\n) satır sonundaki \r karakterini atla
+      if (c === "\r"){
+        continue;
+      }
 			if (c === "\n") {
 				row.push(field);
 				rows.push(row);
@@ -71,61 +73,64 @@ function CsvTextToJSON(data) {
     const c = data[i];
     // escape karakteri
     if (c === "\\") {
-        i++;
-        if (i >= len) {
-            field += "\\";
-            break;
-        }
-        switch (data[i]) {
+      i++;
+      if (i >= len) {
+          field += "\\";
+          break;
+      }
+      switch (data[i]) {
+        case "\\":
+          field += "\\";
+          break;
 
-            case "\\":
-                field += "\\";
-                break;
+        case ",":
+          field += ",";
+          break;
 
-            case ",":
-                field += ",";
-                break;
+        case "n":
+          field += "\n";
+          break;
 
-            case "n":
-                field += "\n";
-                break;
+        case "r":
+          field += "\r";
+          break;
 
-            case "r":
-                field += "\r";
-                break;
-
-            default:
-                field += "\\";
-                field += data[i];
-                break;
-        }
-        continue;
+        default:
+          field += "\\";
+          field += data[i];
+          break;
+      }
+      continue;
     }
 
     // kolon
     if (c === ",") {
-        row.push(field);
-        field = "";
-        continue;
+      row.push(field);
+      field = "";
+      continue;
     }
 
+    // Windows (\r\n) satır sonundaki \r karakterini atla
+    if (c === "\r"){
+      continue;
+    }
 
     // satır
     if (c === "\n") {
-        row.push(field);
-        field = "";
-        if (headers === null) {
-            headers = row;
-        } else {
-            const obj = {};
-            const count = headers.length;
-            for (let x = 0; x < count; x++) {
-                obj[headers[x]] = row[x] ?? "";
-            }
-            result.push(obj);
+      row.push(field);
+      field = "";
+      if (headers === null) {
+        headers = row;
+      } else {
+        const obj = {};
+        const count = headers.length;
+        for (let x = 0; x < count; x++) {
+          obj[headers[x]] = row[x] ?? "";
         }
-        row = [];
-        continue;
+        result.push(obj);
+      }
+      row = [];
+      continue;
     }
     field += c;
   }
@@ -133,16 +138,17 @@ function CsvTextToJSON(data) {
 
   // son satır (\n ile bitmeyen CSV)
   if (field.length > 0 || row.length > 0) {
-      row.push(field);
-      if (headers === null) {
-          headers = row;
-      } else {
-          const obj = {};
-          for (let x = 0; x < headers.length; x++) {
-              obj[headers[x]] = row[x] ?? "";
-          }
-          result.push(obj);
+    row.push(field);
+    if (headers === null) {
+      headers = row;
+    } else {
+      const obj = {};
+      for (let x = 0; x < headers.length; x++) {
+        obj[headers[x]] = row[x] ?? "";
       }
+      result.push(obj);
+    }
   }
   return result;
 }
+
