@@ -203,7 +203,7 @@ func Kill(port int){
 
 func LogTail(port int){
   pid := FindPIDFromNetPort(port)
-  FindServiceWithPortName(port)
+  serviceName := FindServiceWithPortName(port)
   if(pid!=0){
     service := FindServiceNameFromPID(pid)
     if(service!=""){
@@ -215,6 +215,9 @@ func LogTail(port int){
     }else{
       write("[X] PORT="+ToString(port)+"service not found")
     }
+  }else if (serviceName!=""){
+    write("[+]", serviceName)
+    BashStream("journalctl -n 40 -f -u "+serviceName)
   }
 }
 
@@ -283,6 +286,63 @@ func RunPort(port int){
     write("[X] main.go, router.php, main.js not found!")
   }
 }
+
+
+
+
+
+
+func slugify(s string) string {
+	s = strings.ToLower(s)
+
+	var b strings.Builder
+	dash := false
+
+	for _, r := range s {
+		switch {
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			b.WriteRune(r)
+			dash = false
+
+		case !dash && b.Len() > 0:
+			b.WriteByte('-')
+			dash = true
+		}
+	}
+
+	return strings.Trim(b.String(), "-")
+}
+
+
+func StartPort(port int){
+  base := ""
+  path := os.Getenv("PWD")
+  write("[.]", path)
+  if FileExists(path+"/main.go"){
+    app := "run.app"
+    Check_Go(path,app)
+    exec := path+"/"+app+" port="+ToString(port)+" base=\""+base+"\" path=\""+path+"\""
+
+    name := "kurucu-" + slugify(path) + "-" + ToString(port)
+
+    serviceFileContent := CreateServiceFileContent("Program:" + path,exec,path)
+    WriteServiceFile(name,serviceFileContent)
+    CommandDaemonReload()
+    CommandEnableService(name)
+    CommandRestartService(name)
+    
+    LogTail(port)
+    //BashStream(exec)
+  }else if FileExists(path+"/router.php") {
+    exec := "/program/php -d upload_max_filesize=500M -d post_max_size=500M -S 0.0.0.0:"+ToString(port)+" -t "+path+" "+path+"/router.php";
+    BashStream(exec)
+  }else if FileExists(path+"/main.js") {
+    
+  }else{
+    write("[X] main.go, router.php, main.js not found!")
+  }
+}
+
 
 
 

@@ -49,12 +49,17 @@ func command(cmd string) string{
 	delete_argument := arguments(cmd, "delete")
 	  port_argument := arguments(cmd, "port")
 		kill_argument := arguments(cmd, "kill")
+
+	 pause_argument := arguments(cmd, "pause")
+		play_argument := arguments(cmd, "play")
 	reload_argument := arguments(cmd, "reload")
 	   log_argument := arguments(cmd, "log")
 		 run_argument := arguments(cmd, "run")
 		info_argument := arguments(cmd, "info")
  process_argument := arguments(cmd, "process")
+   start_argument := arguments(cmd, "start")
 	
+
 	if( create_argument != "" ){
 		server_ports := strings.Split(create_argument,":")
 		if len(server_ports)==1 && ToNumber(server_ports[0])!=0 {
@@ -152,6 +157,16 @@ func command(cmd string) string{
 		}
 		
 		return ""
+	}else if pause_argument!=""{
+		port          := ToNumber(pause_argument)
+		service_name  := FindServiceWithPortName(port)
+		CommandStopService(service_name)
+		return ""
+	}else if play_argument!=""{
+		port          := ToNumber(play_argument)
+		service_name  := FindServiceWithPortName(port)
+		CommandStartService(service_name)
+		return ""
 	}else if log_argument!=""{
 
 		
@@ -200,6 +215,12 @@ func command(cmd string) string{
 		RunPort(pid)
 		
 		return ""
+	}else if start_argument!=""{
+
+		pid := ToNumber(start_argument)
+		StartPort(pid)
+		
+		return ""
 	}else{
 
 	}
@@ -219,6 +240,9 @@ func KurucuInfo(){
 	write("   process=pid")
 	write("      port=port")
 	write("      kill=port")
+
+	write("     pause=port")
+	write("      play=port")
 	write("    reload=port")
 	write("       log=port")
 
@@ -226,6 +250,8 @@ func KurucuInfo(){
 	write("     check=lang:path")
 
 	write("       run=port  RUN this program")
+	write("     start=port  START this program via service")
+	
 	//write("     start=service:port")
 	//write("      stop=service:port")
 	
@@ -443,132 +469,16 @@ func FindServiceWithPortName(port int) string {
 	return ""
 }
 
-/*
-func FindPIDFromNetPort(port int, hide ...bool) int {
-	silent := false
-	if len(hide) > 0 { silent = hide[0] }
-
-	cmd := exec.Command("sh", "-c",
-		fmt.Sprintf(`ss -tulnp | awk '/:%d /&&/pid=/{match($0,/pid=([0-9]+)/,m);print m[1]}'`, port),
-	)
-
-	output, err := cmd.Output()
-	if err != nil {
-		if !silent { write("[X] ss command failed:", err) }
-		return 0
-	}
-
-	pidStr := strings.TrimSpace(string(output))
-
-	if pidStr == "" {
-		if !silent { write("[X] PID not found for port:", port) }
-		return 0
-	}
-
-	
-	pidStr = strings.TrimSpace(pidStr)
-	lines := strings.Split(pidStr, "\n")
-	pid, err := strconv.Atoi(strings.TrimSpace(lines[0]))
-	if err != nil {
-		if !silent { write("[X] PID parse failed:", err, pidStr) }
-		return 0
-	}
-
-	if !silent { write("[+] PID="+ToString(pid)+" found from port="+ToString(port)) }
-	return pid
-}
-*/
 
 
 
-/*
-func FindPIDFromNetPort(port int, hide ...bool) int {
-	silent := len(hide) > 0 && hide[0]
 
-	portHex := fmt.Sprintf("%04X", port)
 
-	// TCP + TCP6 kontrolü
-	files := []string{
-		"/proc/net/tcp",
-		"/proc/net/tcp6",
-	}
 
-	var inode string
 
-	for _, file := range files {
-		data, err := os.ReadFile(file)
-		if err != nil {
-			continue
-		}
 
-		lines := strings.Split(string(data), "\n")
 
-		for _, line := range lines[1:] {
-			fields := strings.Fields(line)
-			if len(fields) < 10 {
-				continue
-			}
 
-			local := fields[1]
-			parts := strings.Split(local, ":")
-
-			if len(parts) != 2 {
-				continue
-			}
-
-			if parts[1] == portHex {
-				inode = fields[9]
-				break
-			}
-		}
-
-		if inode != "" {
-			break
-		}
-	}
-
-	if inode == "" {
-		if !silent {
-			write("[X] PID not found for port:", port)
-		}
-		return 0
-	}
-
-	// inode -> PID eşleştirme
-	
-	if err != nil {
-		return 0
-	}
-
-	target := "socket:[" + inode + "]"
-
-	for _, fd := range entries {
-		link, err := os.Readlink(fd)
-		if err != nil {
-			continue
-		}
-
-		if link == target {
-			pidStr := strings.Split(fd, "/")[2]
-
-			pid, err := strconv.Atoi(pidStr)
-			if err == nil {
-				if !silent {
-					write("[+] PID="+ToString(pid)+" found from port="+ToString(port))
-				}
-				return pid
-			}
-		}
-	}
-
-	if !silent {
-		write("[X] PID not found")
-	}
-
-	return 0
-}
-
-*/
 
 
 
