@@ -1,1 +1,4 @@
-/program/go run main.go log=/web/.logs/topluyo.log r=20 s=10 b=600
+/program/go run main.go shield=on http=:9090 upstream=http://127.0.0.1:8080 \
+  mods=syn,http,slow,iot,botnet,keep \
+  cf=/web/config/.cloudflare.json \
+  ipset=blacklist
