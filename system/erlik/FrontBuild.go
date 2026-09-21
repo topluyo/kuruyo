@@ -3,8 +3,8 @@ package main
 import (
 	
 	"os"
-  "bufio"
-  "strings"
+	"bufio"
+	"strings"
 	"strconv"
 	"os/exec"
 	"log"
@@ -124,7 +124,7 @@ func main() {
 		
 		//res, exit := Bash("clang -target bpf -O2 -g -Wall -c bozkurt.c -o bozkurt.o -I/usr/include/x86_64-linux-gnu")
 		//res, exit := Bash("clang -O3 -target bpf -mcpu=v3 -flto -fno-stack-protector -Wall -I/usr/include/x86_64-linux-gnu -c bozkurt.c -o bozkurt.o")
-		res, exit := Bash("clang -O2 -target bpf -mcpu=v4 -g -Wall -D__TARGET_ARCH_x86 -c bozkurt.c -o bozkurt.o -I/usr/include/x86_64-linux-gnu")
+		res, exit := Bash("clang -O2 -target bpf -mcpu=v3 -g -Wall -D__TARGET_ARCH_x86 -c bozkurt.c -o bozkurt.o -I/usr/include/x86_64-linux-gnu")
 		if(exit!=0){
 			write(res)
 			write("[X] Error on building bozkurt.c -> bozkurt.o")
@@ -136,7 +136,7 @@ func main() {
 	if slices.Contains(os.Args, "build") {
 		write("[.] build")
 		PreBuild()
-		res, exit := Bash("clang -O2 -target bpf -mcpu=v4 -g -Wall -D__TARGET_ARCH_x86_64 -c bozkurt.c -o bozkurt.o -I/usr/include/x86_64-linux-gnu")
+		res, exit := Bash("clang -O2 -target bpf -mcpu=v3 -g -Wall -D__TARGET_ARCH_x86_64 -c bozkurt.c -o bozkurt.o -I/usr/include/x86_64-linux-gnu")
 		if(exit!=0){
 			write(res)
 			write("[X] Error on building bozkurt.c -> bozkurt.o")
