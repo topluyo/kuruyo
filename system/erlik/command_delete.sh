@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ROOT="/web/server/system/erlik";
+ROOT="/web/system/erlik";
 SRC="bozkurt.c"
 OBJ="bozkurt.o"
 cd $ROOT
