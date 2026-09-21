@@ -477,6 +477,24 @@ func convertIPs(text string) string {
 	})
 }
 
+func convertPORTs(text string) string {
+	re := regexp.MustCompile(`PORT\.(\d+)`)
+
+	return re.ReplaceAllStringFunc(text, func(match string) string {
+		m := re.FindStringSubmatch(match)
+
+		port, err := strconv.ParseUint(m[1], 10, 16)
+		if err != nil {
+			return match // geçersizse olduğu gibi bırak
+		}
+
+		// bpf_htons karşılığı: 16-bit byte swap
+		port = ((port & 0xFF) << 8) | ((port >> 8) & 0xFF)
+
+		return fmt.Sprintf("0x%04X", port)
+	})
+}
+
 func RecodeHelper(state string, path string) string{
 	resp := ""
 
@@ -510,6 +528,7 @@ func ReCode(code string) {
 		}
 
 		line = convertIPs(line)
+		line = convertPORTs(line)
 
 		var path string = ""
 		re := regexp.MustCompile(`"([^"]+)"`)
