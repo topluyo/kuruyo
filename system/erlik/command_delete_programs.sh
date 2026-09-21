@@ -2,8 +2,12 @@
 
 set -e
 
-ROOT="/web/server/system/erlik"
-cd "$ROOT"
+
+ROOT="/web/system/erlik";
+SRC="bozkurt.c"
+OBJ="bozkurt.o"
+cd $ROOT
+
 
 echo "[.] XDP programlarını interface'lerden kaldırıyor..."
 
