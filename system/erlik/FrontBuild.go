@@ -26,7 +26,7 @@ import (
 )
 
 var erlikPATH   string = "/usr/local/bin/erlik"
-var workingPATH string = "/web/server/system/erlik"
+var workingPATH string = "/web/system/erlik"
 var configPATH  string = "bozkurt.cfg"
 var kurtPATH    string = "kurt.c"
 var bozkurtPATH string = "bozkurt.c"
