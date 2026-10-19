@@ -1,30 +1,32 @@
 package main
 
 import (
+	"app/shield"
+	"bytes"
 	"encoding/json"
-	"github.com/hpcloud/tail"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-	"fmt"
-	"net/http"
-	"bytes"
-	"io"
-	"strconv"
+
+	"github.com/hpcloud/tail"
 )
 
 var (
-	LOG_FILE                 = ""   // log=
-	BLOCK_LOG_FILE           = ""   // [log].blocked.log
-	BLOCK_JSON_FILE          = ""   // [log].blocked.json
-	CLOUDFLARE_CONFIG_FILE   = ""   // cf=
-	REQUEST         = 10
-	PER_TIME        = 2 * time.Second
-	BLOCK_TIME      = 2 * time.Second
+	LOG_FILE               = "" // log=
+	BLOCK_LOG_FILE         = "" // [log].blocked.log
+	BLOCK_JSON_FILE        = "" // [log].blocked.json
+	CLOUDFLARE_CONFIG_FILE = "" // cf=
+	REQUEST                = 10
+	PER_TIME               = 2 * time.Second
+	BLOCK_TIME             = 2 * time.Second
 )
 
 /* ---------------- TYPES ---------------- */
@@ -48,69 +50,71 @@ var (
 	Blocked      = make(map[string]*BlockInfo)
 	blockedDirty atomic.Bool
 
-	blockLogMu   sync.Mutex
-	
+	blockLogMu sync.Mutex
 )
 
 /* ---------------- MAIN ---------------- */
 
 func main() {
 
-
-
-	if( argument("log") == "" && argument("clear")==""  && argument("unban")==""){
+	if argument("log") == "" && argument("clear") == "" && argument("unban") == "" && argument("shield") == "" && argument("http") == "" {
 		row("USAGE")
 		write(" log=/path/to/file.log")
-		write(" cf=/web/config/.cloudflare.log")
+		write(" cf=/web/config/.cloudflare.json")
 		write(" clear=yes")
 		write(" r=100  request")
 		write(" s=120  in last period")
 		write(" b=3600 block")
-		
+		write(" shield=on   SYN/ACK flood guard (background, /proc + ipset)")
+		write(" http=:9090  reverse-proxy HTTP server (middleware)")
+		write(" upstream=http://127.0.0.1:8080  proxy aim")
+		write(" mods=syn,http,slow,iot,botnet,keep  (default all)")
+
 		write()
+
 		return
 	}
 
-
-
-
-
 	LOG_FILE := argument("log")
 	BLOCK_LOG_FILE = LOG_FILE + ".block.log"
-	CLOUDFLARE_CONFIG_FILE := argument("cf","/web/config/.cloudflare.json")
+	CLOUDFLARE_CONFIG_FILE := argument("cf", "/web/config/.cloudflare.json")
 	BLOCK_JSON_FILE = LOG_FILE + ".block.json"
 
 	loadCloudflareConfig(CLOUDFLARE_CONFIG_FILE)
 
-
-	if(argument("clear")!=""){
-		ClearAllBlockedIPs(cfConfig.CFZoneID,cfConfig.CFAuthToken)
+	if argument("clear") != "" {
+		ClearAllBlockedIPs(cfConfig.CFZoneID, cfConfig.CFAuthToken)
 	}
 
-	if(argument("unban")!=""){
-		UnBlockOnCloudFlare(argument("unban"),cfConfig.CFZoneID,cfConfig.CFAuthToken)
+	if argument("unban") != "" {
+		UnBlockOnCloudFlare(argument("unban"), cfConfig.CFZoneID, cfConfig.CFAuthToken)
 		return
 	}
 
-	if(argument("log")!=""){
+	if argument("shield") != "" || argument("http") != "" {
+		runShield()
+		return
+	}
+
+	if argument("log") != "" {
 
 		table(" BozKurt Started")
 		write(" * log        :", LOG_FILE)
 		write(" * block log  :", BLOCK_LOG_FILE)
 		write(" * block json :", BLOCK_JSON_FILE)
 
-		r := argument("r","100")
-		s := argument("s","120")
-		b := argument("b","3600")
+		r := argument("r", "100")
+		s := argument("s", "120")
+		b := argument("b", "3600")
 
-		REQUEST    = toInt(r)
-		PER_TIME   = time.Duration(toInt(s)) * time.Second
+		REQUEST = toInt(r)
+		PER_TIME = time.Duration(toInt(s)) * time.Second
 		BLOCK_TIME = time.Duration(toInt(b)) * time.Second
 
 		write(" = r REQUEST    :", REQUEST)
 		write(" = s PER_TIME   :", PER_TIME)
 		write(" = b BLOCK_TIME :", BLOCK_TIME)
-		
+
 		write("")
 
 		loadBlockedFromFile(BLOCK_JSON_FILE)
@@ -119,10 +123,10 @@ func main() {
 
 		t, err := tail.TailFile(LOG_FILE, tail.Config{
 			Follow:    true,
-			ReOpen:   true,
+			ReOpen:    true,
 			MustExist: true,
-			Poll:     true,
-			Location: &tail.SeekInfo{Offset: 0, Whence: os.SEEK_END},
+			Poll:      true,
+			Location:  &tail.SeekInfo{Offset: 0, Whence: os.SEEK_END},
 		})
 		if err != nil {
 			log.Fatalf("tail error: %v", err)
@@ -135,8 +139,6 @@ func main() {
 		}
 	}
 }
-
-/* ---------------- LOG HANDLING ---------------- */
 
 func handleLine(line string) {
 	if !strings.HasPrefix(line, "RATEOVER") {
@@ -156,7 +158,6 @@ func handleLine(line string) {
 	stat.mu.Lock()
 	defer stat.mu.Unlock()
 
-	// 🔥 HALA ATAK VARSA BLOCK SÜRESİNİ UZAT
 	if stat.blocked {
 		registerBlock(ip)
 		return
@@ -165,7 +166,6 @@ func handleLine(line string) {
 	now := time.Now()
 	stat.events = append(stat.events, now)
 
-	// window temizliği
 	cutoff := now.Add(-PER_TIME)
 	idx := 0
 	for _, t := range stat.events {
@@ -182,15 +182,12 @@ func handleLine(line string) {
 	}
 }
 
-/* ---------------- BLOCK / UNBLOCK ---------------- */
-
 func registerBlock(ip string) {
 	now := time.Now().Unix()
 
 	blockedMu.Lock()
 	defer blockedMu.Unlock()
 
-	// zaten blockluysa sadece süre uzat
 	if info, ok := Blocked[ip]; ok {
 		atomic.StoreInt64(&info.blockedAt, now)
 		blockedDirty.Store(true)
@@ -203,7 +200,6 @@ func registerBlock(ip string) {
 
 	blockedDirty.Store(true)
 
-	// ⛔ BLOCK LOG
 	writeBlockLog("BLOCK", ip)
 
 	go BlockAPI(ip)
@@ -228,7 +224,7 @@ func checkUnblock() {
 	for ip, info := range Blocked {
 		blockTime := atomic.LoadInt64(&info.blockedAt)
 
-		if time.Duration(now-blockTime)*time.Second >= BLOCK_TIME{
+		if time.Duration(now-blockTime)*time.Second >= BLOCK_TIME {
 			go func(ip string) {
 				if UnBlockAPI(ip) {
 					blockedMu.Lock()
@@ -245,8 +241,6 @@ func checkUnblock() {
 	}
 }
 
-/* ---------------- BLOCK LOG FILE ---------------- */
-
 func writeBlockLog(action, ip string) {
 	blockLogMu.Lock()
 	defer blockLogMu.Unlock()
@@ -261,8 +255,6 @@ func writeBlockLog(action, ip string) {
 	line := action + ", " + ts + ", " + ip + "\n"
 	_, _ = f.WriteString(line)
 }
-
-/* ---------------- blocked.json ---------------- */
 
 func loadBlockedFromFile(path string) {
 	data, err := ioutil.ReadFile(path)
@@ -321,9 +313,6 @@ func writeBlockedToFile(path string) {
 	blockedDirty.Store(false)
 }
 
-/* ---------------- API PLACEHOLDERS ---------------- */
-
-
 type CFConfig struct {
 	CFZoneID    string `json:"CFZoneID"`
 	CFAuthToken string `json:"CFAuthToken"`
@@ -348,17 +337,14 @@ func loadCloudflareConfig(path string) error {
 
 	return nil
 }
+
 var (
-	HTTPTimeout  = 10 * time.Second
+	HTTPTimeout = 10 * time.Second
 )
 
-// ---------------- BLOCK ----------------
-
-
-
 func BlockAPI(ip string) {
-	write("[BLOCK] ",ip)
-	BlockOnCloudFlare(ip,cfConfig.CFZoneID,cfConfig.CFAuthToken)
+	write("[BLOCK] ", ip)
+	BlockOnCloudFlare(ip, cfConfig.CFZoneID, cfConfig.CFAuthToken)
 }
 
 func UnBlockAPI(ip string) bool {
@@ -366,121 +352,159 @@ func UnBlockAPI(ip string) bool {
 	return UnBlockOnCloudFlare(ip, cfConfig.CFZoneID, cfConfig.CFAuthToken)
 }
 
-
 type IPRule struct {
-    Mode          string `json:"mode"`
-    Notes         string `json:"notes"`
-    Configuration struct {
-        Target string `json:"target"`
-        Value  string `json:"value"`
-    } `json:"configuration"`
+	Mode          string `json:"mode"`
+	Notes         string `json:"notes"`
+	Configuration struct {
+		Target string `json:"target"`
+		Value  string `json:"value"`
+	} `json:"configuration"`
 }
 
 type ListResponse struct {
-    Result []struct {
-        ID string `json:"id"`
-    } `json:"result"`
+	Result []struct {
+		ID string `json:"id"`
+	} `json:"result"`
 }
 
-
 func BlockOnCloudFlare(ip string, zoneID string, apiToken string) {
-    url := fmt.Sprintf(
-        "https://api.cloudflare.com/client/v4/zones/%s/firewall/access_rules/rules",
-        zoneID,
-    )
+	url := fmt.Sprintf(
+		"https://api.cloudflare.com/client/v4/zones/%s/firewall/access_rules/rules",
+		zoneID,
+	)
 
-    rule := IPRule{
-        Mode:  "block",
-        Notes: "Blocked via API",
-    }
-    rule.Configuration.Target = "ip"
-    rule.Configuration.Value = ip
+	rule := IPRule{
+		Mode:  "block",
+		Notes: "Blocked via API",
+	}
+	rule.Configuration.Target = "ip"
+	rule.Configuration.Value = ip
 
-    payload, _ := json.Marshal(rule)
+	payload, _ := json.Marshal(rule)
 
-    req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
-    if err != nil {
-        fmt.Println("Request hatası:", err)
-        return
-    }
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+	if err != nil {
+		fmt.Println("Request hatası:", err)
+		return
+	}
 
-    req.Header.Set("Content-Type", "application/json")
-    req.Header.Set("Authorization", "Bearer "+apiToken)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiToken)
 
-    client := &http.Client{}
-    resp, err := client.Do(req)
-    if err != nil {
-        write("[APIERROR]", err)
-        return
-    }
-    defer resp.Body.Close()
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		write("[APIERROR]", err)
+		return
+	}
+	defer resp.Body.Close()
 
-    if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-        write("[BLOCKED]", ip)
-    } else {
-        write("[ERROR]", resp.StatusCode)
-    }
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		write("[BLOCKED]", ip)
+	} else {
+		write("[ERROR]", resp.StatusCode)
+	}
+}
+
+func BlockBatch(ips map[string]string, zoneID string, apiToken string) {
+	url := fmt.Sprintf(
+		"https://api.cloudflare.com/client/v4/zones/%s/firewall/access_rules/rules",
+		zoneID,
+	)
+	client := &http.Client{Timeout: HTTPTimeout}
+
+	for ip, note := range ips {
+		rule := IPRule{
+			Mode:  "block",
+			Notes: note,
+		}
+		rule.Configuration.Target = "ip"
+		rule.Configuration.Value = ip
+
+		payload, err := json.Marshal(rule)
+		if err != nil {
+			write("[BLOCKBATCH JSON ERR]", ip, err)
+			continue
+		}
+
+		req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+		if err != nil {
+			write("[BLOCKBATCH REQ ERR]", ip, err)
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+apiToken)
+
+		resp, err := client.Do(req)
+		if err != nil {
+			write("[BLOCKBATCH API ERR]", ip, err)
+			continue
+		}
+		resp.Body.Close()
+
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			write("[BLOCKBATCH]", ip)
+		} else {
+			write("[BLOCKBATCH ERR]", ip, resp.StatusCode)
+		}
+	}
 }
 
 func UnBlockOnCloudFlare(ip string, zoneID string, apiToken string) bool {
-    client := &http.Client{}
+	client := &http.Client{}
 
-    listURL := fmt.Sprintf(
-        "https://api.cloudflare.com/client/v4/zones/%s/firewall/access_rules/rules?configuration.value=%s",
-        zoneID,
-        ip,
-    )
+	listURL := fmt.Sprintf(
+		"https://api.cloudflare.com/client/v4/zones/%s/firewall/access_rules/rules?configuration.value=%s",
+		zoneID,
+		ip,
+	)
 
-    req, _ := http.NewRequest("GET", listURL, nil)
-    req.Header.Set("Authorization", "Bearer "+apiToken)
+	req, _ := http.NewRequest("GET", listURL, nil)
+	req.Header.Set("Authorization", "Bearer "+apiToken)
 
-    resp, err := client.Do(req)
-    if err != nil {
-        write("[LISTERROR]", err)
-        return false
-    }
-    defer resp.Body.Close()
+	resp, err := client.Do(req)
+	if err != nil {
+		write("[LISTERROR]", err)
+		return false
+	}
+	defer resp.Body.Close()
 
-    body, _ := io.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
-    var listResp ListResponse
-    json.Unmarshal(body, &listResp)
+	var listResp ListResponse
+	json.Unmarshal(body, &listResp)
 
-    if len(listResp.Result) == 0 {
-        write("[NONBLOCKED]", ip)
-        return true // zaten block yok → temiz say
-    }
+	if len(listResp.Result) == 0 {
+		write("[NONBLOCKED]", ip)
+		return true
+	}
 
-    ruleID := listResp.Result[0].ID
+	ruleID := listResp.Result[0].ID
 
-    deleteURL := fmt.Sprintf(
-        "https://api.cloudflare.com/client/v4/zones/%s/firewall/access_rules/rules/%s",
-        zoneID,
-        ruleID,
-    )
+	deleteURL := fmt.Sprintf(
+		"https://api.cloudflare.com/client/v4/zones/%s/firewall/access_rules/rules/%s",
+		zoneID,
+		ruleID,
+	)
 
-    delReq, _ := http.NewRequest("DELETE", deleteURL, nil)
-    delReq.Header.Set("Authorization", "Bearer "+apiToken)
+	delReq, _ := http.NewRequest("DELETE", deleteURL, nil)
+	delReq.Header.Set("Authorization", "Bearer "+apiToken)
 
-    delResp, err := client.Do(delReq)
-    if err != nil {
-        write("[DELETEERROR]", err)
-        return false
-    }
-    defer delResp.Body.Close()
+	delResp, err := client.Do(delReq)
+	if err != nil {
+		write("[DELETEERROR]", err)
+		return false
+	}
+	defer delResp.Body.Close()
 
-    if delResp.StatusCode >= 200 && delResp.StatusCode < 300 {
-        write("[UNBLOCKED]", ip)
-        return true
-    }
+	if delResp.StatusCode >= 200 && delResp.StatusCode < 300 {
+		write("[UNBLOCKED]", ip)
+		return true
+	}
 
-    write("[UNBLOCKERROR]", delResp.StatusCode)
-    return false
+	write("[UNBLOCKERROR]", delResp.StatusCode)
+	return false
 }
-
-
-
-
 
 func ClearAllBlockedIPs(zoneID string, apiToken string) {
 	client := &http.Client{Timeout: HTTPTimeout}
@@ -515,8 +539,8 @@ func ClearAllBlockedIPs(zoneID string, apiToken string) {
 
 		var result struct {
 			Result []struct {
-				ID   string `json:"id"`
-				Mode string `json:"mode"`
+				ID            string `json:"id"`
+				Mode          string `json:"mode"`
 				Configuration struct {
 					Target string `json:"target"`
 					Value  string `json:"value"`
@@ -567,9 +591,6 @@ func ClearAllBlockedIPs(zoneID string, apiToken string) {
 	write("[DONE] All blocked IPs cleared")
 }
 
-
-/* ---------------- HELPERS ---------------- */
-
 func argument(key string, defaults ...string) string {
 	response := ""
 	for _, arg := range os.Args {
@@ -615,7 +636,6 @@ func row(name string) {
 	write("└────────────────────────────────────────────────┘")
 }
 
-
 func toInt(number string) int {
 	intNumber, err := strconv.Atoi(number)
 	if err != nil {
@@ -624,6 +644,91 @@ func toInt(number string) int {
 	return intNumber
 }
 
+func runShield() {
+	mods := argument("mods", "syn,http,slow,iot,botnet,keep")
+	ipsetName := argument("ipset", "blacklist")
+	upstream := argument("upstream", "")
+	httpAddr := argument("http", "")
 
+	enable := func(name string) bool {
+		for _, m := range strings.Split(mods, ",") {
+			if strings.TrimSpace(m) == name {
+				return true
+			}
+		}
+		return false
+	}
 
+	enableSYN := argument("shield") != "" && enable("syn")
+	enableHTTP := httpAddr != "" && enable("http")
 
+	if !enableSYN && !enableHTTP {
+		write("[SHIELD] shield=on AND http=ADDR are not provided - nothing will work")
+		return
+	}
+
+	cfZone := cfConfig.CFZoneID
+	cfToken := cfConfig.CFAuthToken
+	cfReady := cfZone != "" && cfToken != ""
+
+	var onCloudBan func(string, string)
+	if cfReady {
+		onCloudBan = func(ip, note string) {
+			BlockBatch(map[string]string{ip: note}, cfZone, cfToken)
+			registerBlock(ip)
+		}
+	} else {
+		write("[SHIELD] Cloudflare config missing - bans will only go to ipset")
+		onCloudBan = func(ip, _ string) { registerBlock(ip) }
+	}
+
+	guard := shield.NewGuardManager(shield.GuardConfig{
+		EnableSYN:      enableSYN,
+		EnableHTTP:     enableHTTP,
+		EnableSlow:     enable("slow"),
+		EnableIoT:      enable("iot"),
+		EnableBotnet:   enable("botnet"),
+		EnableKeep:     enable("keep"),
+		Listen:         httpAddr,
+		Upstream:       upstream,
+		IPSetName:      ipsetName,
+		OnCloudBan:     onCloudBan,
+		SYNBanSec:      600,
+		HTTPBanSec:     600,
+		IoTBanSec:      3600,
+		BotnetBanSec:   1800,
+		SlowBanSec:     600,
+		SYNMaxPerIP:    50,
+		SYNGlobalLimit: 5000,
+	})
+
+	table(" BozKurt Shield")
+	write(" * SYN guard :", enableSYN)
+	write(" * HTTP proxy :", httpAddr)
+	write(" * upstream   :", upstream)
+	write(" * ipset      :", ipsetName)
+	write(" * cloudflare :", cfReady)
+	write("")
+
+	guard.Start()
+
+	if httpAddr != "" && upstream != "" {
+		srv := &http.Server{
+			Addr:              httpAddr,
+			Handler:           guard.Handler(),
+			ConnState:         guard.ConnStateHook,
+			ReadHeaderTimeout: 5 * time.Second,
+			ReadTimeout:       30 * time.Second,
+			IdleTimeout:       120 * time.Second,
+			MaxHeaderBytes:    1 << 20,
+		}
+		write("[SHIELD] HTTP server is listening:", httpAddr, "->", upstream)
+		if err := srv.ListenAndServe(); err != nil {
+			log.Fatalf("[SHIELD] HTTP server error: %v", err)
+		}
+		return
+	}
+
+	write("[SHIELD] background guard active.")
+	select {}
+}
